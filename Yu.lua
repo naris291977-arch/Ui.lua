@@ -1,10 +1,13 @@
--- [[ UI Library Only ]] --
+-- [[ pano.lua — Complete UI Library with Loading & Language ]] --
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+-- ═══════════════════════════════════════════════════════════
+--  UI LIBRARY CORE
+-- ═══════════════════════════════════════════════════════════
 local Library = {
     Theme = {
         Main       = Color3.fromRGB(10, 10, 13),
@@ -45,17 +48,9 @@ local function MakeShadow(parent)
     sh.SliceCenter = Rect.new(49, 49, 450, 450)
 end
 
-function Library:UpdateTheme(newColor)
-    self.Theme.Accent = newColor
-    for _, obj in pairs(self.ElementsToTheme) do
-        if not obj or not obj.Parent then continue end
-        if obj:IsA("UIStroke") then Tween(obj, {Color = newColor})
-        elseif obj:IsA("Frame") or obj:IsA("TextButton") then Tween(obj, {BackgroundColor3 = newColor})
-        elseif obj:IsA("TextLabel") then Tween(obj, {TextColor3 = newColor})
-        end
-    end
-end
-
+-- ═══════════════════════════════════════════════════════════
+--  NOTIFICATION SYSTEM
+-- ═══════════════════════════════════════════════════════════
 function Library:Notify(title, msg, duration)
     local Screen = game.CoreGui:FindFirstChild("PeHub_Notifs")
         or Instance.new("ScreenGui", game.CoreGui)
@@ -136,6 +131,23 @@ function Library:Notify(title, msg, duration)
     end)
 end
 
+-- ═══════════════════════════════════════════════════════════
+--  THEME UPDATER
+-- ═══════════════════════════════════════════════════════════
+function Library:UpdateTheme(newColor)
+    self.Theme.Accent = newColor
+    for _, obj in pairs(self.ElementsToTheme) do
+        if not obj or not obj.Parent then continue end
+        if obj:IsA("UIStroke") then Tween(obj, {Color = newColor})
+        elseif obj:IsA("Frame") or obj:IsA("TextButton") then Tween(obj, {BackgroundColor3 = newColor})
+        elseif obj:IsA("TextLabel") then Tween(obj, {TextColor3 = newColor})
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  CREATE MAIN WINDOW
+-- ═══════════════════════════════════════════════════════════
 function Library:CreateWindow(title)
     local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
     ScreenGui.Name = "PeHub_Elite"
@@ -297,6 +309,7 @@ function Library:CreateWindow(title)
     MinBtn.MouseButton1Click:Connect(function() SetMinimized(true) end)
     BarRestore.MouseButton1Click:Connect(function() SetMinimized(false) end)
 
+    -- Drag window
     local dragging, dragStart, startPos
     Header.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -315,6 +328,7 @@ function Library:CreateWindow(title)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
 
+    -- Keybind toggle
     UserInputService.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Library.Keybind then
             Library.IsOpen = not Library.IsOpen
@@ -377,6 +391,7 @@ function Library:CreateWindow(title)
     PageHolder.Position = UDim2.new(0, 170, 0, 58)
     PageHolder.BackgroundTransparency = 1
 
+    -- ========== TAB SYSTEM ==========
     local Tabs = {}
 
     function Tabs:AddTab(name, icon)
@@ -679,6 +694,275 @@ function Library:CreateWindow(title)
     end
 
     return Tabs
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  LOADING + LANGUAGE SELECTOR
+-- ═══════════════════════════════════════════════════════════
+function Library:ShowLoadingAndLang(onDone)
+    local Gui = Instance.new("ScreenGui", game.CoreGui)
+    Gui.Name = "PeHub_Loader"
+    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local BG = Instance.new("Frame", Gui)
+    BG.Size = UDim2.new(1, 0, 1, 0)
+    BG.BackgroundColor3 = Color3.fromRGB(6, 6, 8)
+    BG.BorderSizePixel = 0
+    BG.ZIndex = 50
+
+    local BGGrad = Instance.new("UIGradient", BG)
+    BGGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(14, 14, 22)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 6, 8))
+    })
+    BGGrad.Rotation = 45
+
+    -- จุดตกแต่ง
+    for i = 1, 14 do
+        local dot = Instance.new("Frame", BG)
+        local sz = math.random(2, 5)
+        dot.Size = UDim2.new(0, sz, 0, sz)
+        dot.Position = UDim2.new(math.random(), 0, math.random(), 0)
+        dot.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+        dot.BackgroundTransparency = math.random(40, 80) / 100
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 51
+        Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    end
+
+    -- LOADING CARD
+    local LoadCard = Instance.new("Frame", BG)
+    LoadCard.Size = UDim2.new(0, 320, 0, 260)
+    LoadCard.Position = UDim2.new(0.5, -160, 0.6, -130)
+    LoadCard.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+    LoadCard.BorderSizePixel = 0
+    LoadCard.ZIndex = 52
+    LoadCard.BackgroundTransparency = 1
+    Instance.new("UICorner", LoadCard).CornerRadius = UDim.new(0, 16)
+    MakeShadow(LoadCard)
+
+    local LC_Stroke = Instance.new("UIStroke", LoadCard)
+    LC_Stroke.Color = Color3.fromRGB(99, 102, 241)
+    LC_Stroke.Thickness = 1
+    LC_Stroke.Transparency = 0.5
+
+    local LC_TopLine = Instance.new("Frame", LoadCard)
+    LC_TopLine.Size = UDim2.new(1, 0, 0, 2)
+    LC_TopLine.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+    LC_TopLine.BorderSizePixel = 0
+    LC_TopLine.ZIndex = 53
+    Instance.new("UICorner", LC_TopLine).CornerRadius = UDim.new(0, 2)
+
+    local LogoFrame = Instance.new("Frame", LoadCard)
+    LogoFrame.Size = UDim2.new(0, 64, 0, 64)
+    LogoFrame.Position = UDim2.new(0.5, -32, 0, 20)
+    LogoFrame.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+    LogoFrame.BackgroundTransparency = 0.8
+    LogoFrame.BorderSizePixel = 0
+    LogoFrame.ZIndex = 53
+    Instance.new("UICorner", LogoFrame).CornerRadius = UDim.new(0, 16)
+
+    local LogoIcon = Instance.new("TextLabel", LogoFrame)
+    LogoIcon.Size = UDim2.new(1, 0, 1, 0)
+    LogoIcon.BackgroundTransparency = 1
+    LogoIcon.Text = "🔪"
+    LogoIcon.TextScaled = true
+    LogoIcon.ZIndex = 54
+
+    local TitleLbl = Instance.new("TextLabel", LoadCard)
+    TitleLbl.Text = "pano.lua"
+    TitleLbl.Size = UDim2.new(1, 0, 0, 30)
+    TitleLbl.Position = UDim2.new(0, 0, 0, 96)
+    TitleLbl.BackgroundTransparency = 1
+    TitleLbl.TextColor3 = Color3.fromRGB(240, 240, 248)
+    TitleLbl.Font = Enum.Font.GothamBold
+    TitleLbl.TextSize = 22
+    TitleLbl.ZIndex = 53
+
+    local SubLbl = Instance.new("TextLabel", LoadCard)
+    SubLbl.Text = "Murder Mystery Edition"
+    SubLbl.Size = UDim2.new(1, 0, 0, 18)
+    SubLbl.Position = UDim2.new(0, 0, 0, 128)
+    SubLbl.BackgroundTransparency = 1
+    SubLbl.TextColor3 = Color3.fromRGB(99, 102, 241)
+    SubLbl.Font = Enum.Font.Gotham
+    SubLbl.TextSize = 12
+    SubLbl.ZIndex = 53
+
+    local BarBG = Instance.new("Frame", LoadCard)
+    BarBG.Size = UDim2.new(0.8, 0, 0, 5)
+    BarBG.Position = UDim2.new(0.1, 0, 0, 162)
+    BarBG.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    BarBG.BorderSizePixel = 0
+    BarBG.ZIndex = 53
+    Instance.new("UICorner", BarBG).CornerRadius = UDim.new(0, 3)
+
+    local BarFill = Instance.new("Frame", BarBG)
+    BarFill.Size = UDim2.new(0, 0, 1, 0)
+    BarFill.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+    BarFill.BorderSizePixel = 0
+    BarFill.ZIndex = 54
+    Instance.new("UICorner", BarFill).CornerRadius = UDim.new(0, 3)
+
+    local StatusLbl = Instance.new("TextLabel", LoadCard)
+    StatusLbl.Text = "Initializing..."
+    StatusLbl.Size = UDim2.new(1, 0, 0, 20)
+    StatusLbl.Position = UDim2.new(0, 0, 0, 175)
+    StatusLbl.BackgroundTransparency = 1
+    StatusLbl.TextColor3 = Color3.fromRGB(100, 100, 120)
+    StatusLbl.Font = Enum.Font.Gotham
+    StatusLbl.TextSize = 11
+    StatusLbl.ZIndex = 53
+
+    local VerLbl = Instance.new("TextLabel", LoadCard)
+    VerLbl.Text = "v4.2 ELITE  •  by pano"
+    VerLbl.Size = UDim2.new(1, 0, 0, 16)
+    VerLbl.Position = UDim2.new(0, 0, 0, 232)
+    VerLbl.BackgroundTransparency = 1
+    VerLbl.TextColor3 = Color3.fromRGB(60, 60, 80)
+    VerLbl.Font = Enum.Font.Gotham
+    VerLbl.TextSize = 10
+    VerLbl.ZIndex = 53
+
+    Tween(LoadCard, {
+        BackgroundTransparency = 0,
+        Position = UDim2.new(0.5, -160, 0.5, -130)
+    }, 0.6, Enum.EasingStyle.Back)
+
+    local steps = {
+        {t = 0.4, text = "Initializing...", pct = 0.20},
+        {t = 0.4, text = "Loading modules...", pct = 0.50},
+        {t = 0.35, text = "Connecting...", pct = 0.75},
+        {t = 0.3, text = "Almost ready...", pct = 0.95},
+        {t = 0.25, text = "Done!", pct = 1.00},
+    }
+
+    task.spawn(function()
+        task.wait(0.3)
+        for _, s in ipairs(steps) do
+            task.wait(s.t)
+            StatusLbl.Text = s.text
+            Tween(BarFill, {Size = UDim2.new(s.pct, 0, 1, 0)}, 0.3)
+        end
+        task.wait(0.5)
+
+        -- LANGUAGE SELECTOR
+        Tween(LoadCard, {Position = UDim2.new(-0.6, -160, 0.5, -130)}, 0.45, Enum.EasingStyle.Quart)
+        task.wait(0.5)
+        LoadCard.Visible = false
+
+        local LangCard = Instance.new("Frame", BG)
+        LangCard.Size = UDim2.new(0, 320, 0, 220)
+        LangCard.Position = UDim2.new(1.2, 0, 0.5, -110)
+        LangCard.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+        LangCard.BorderSizePixel = 0
+        LangCard.ZIndex = 52
+        Instance.new("UICorner", LangCard).CornerRadius = UDim.new(0, 16)
+        MakeShadow(LangCard)
+
+        local LC2_Stroke = Instance.new("UIStroke", LangCard)
+        LC2_Stroke.Color = Color3.fromRGB(99, 102, 241)
+        LC2_Stroke.Thickness = 1
+        LC2_Stroke.Transparency = 0.5
+
+        local LC2_TopLine = Instance.new("Frame", LangCard)
+        LC2_TopLine.Size = UDim2.new(1, 0, 0, 2)
+        LC2_TopLine.BackgroundColor3 = Color3.fromRGB(99, 102, 241)
+        LC2_TopLine.BorderSizePixel = 0
+        LC2_TopLine.ZIndex = 53
+        Instance.new("UICorner", LC2_TopLine).CornerRadius = UDim.new(0, 2)
+
+        local GlobeLbl = Instance.new("TextLabel", LangCard)
+        GlobeLbl.Text = "🌐"
+        GlobeLbl.Size = UDim2.new(1, 0, 0, 40)
+        GlobeLbl.Position = UDim2.new(0, 0, 0, 16)
+        GlobeLbl.BackgroundTransparency = 1
+        GlobeLbl.TextSize = 28
+        GlobeLbl.ZIndex = 53
+
+        local LangTitle = Instance.new("TextLabel", LangCard)
+        LangTitle.Text = "Select Language"
+        LangTitle.Size = UDim2.new(1, 0, 0, 24)
+        LangTitle.Position = UDim2.new(0, 0, 0, 62)
+        LangTitle.BackgroundTransparency = 1
+        LangTitle.TextColor3 = Color3.fromRGB(240, 240, 248)
+        LangTitle.Font = Enum.Font.GothamBold
+        LangTitle.TextSize = 16
+        LangTitle.ZIndex = 53
+
+        local LangSub = Instance.new("TextLabel", LangCard)
+        LangSub.Text = "เลือกภาษาที่ต้องการใช้งาน"
+        LangSub.Size = UDim2.new(1, 0, 0, 18)
+        LangSub.Position = UDim2.new(0, 0, 0, 88)
+        LangSub.BackgroundTransparency = 1
+        LangSub.TextColor3 = Color3.fromRGB(99, 102, 241)
+        LangSub.Font = Enum.Font.Gotham
+        LangSub.TextSize = 11
+        LangSub.ZIndex = 53
+
+        local Div2 = Instance.new("Frame", LangCard)
+        Div2.Size = UDim2.new(0.85, 0, 0, 1)
+        Div2.Position = UDim2.new(0.075, 0, 0, 114)
+        Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+        Div2.BorderSizePixel = 0
+        Div2.ZIndex = 53
+
+        local function MakeLangBtn(text, flag, xOffset, langKey)
+            local Btn = Instance.new("TextButton", LangCard)
+            Btn.Size = UDim2.new(0, 120, 0, 52)
+            Btn.Position = UDim2.new(0.5, xOffset, 0, 126)
+            Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+            Btn.Text = ""
+            Btn.BorderSizePixel = 0
+            Btn.ZIndex = 54
+            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 10)
+
+            local BStroke = Instance.new("UIStroke", Btn)
+            BStroke.Color = Color3.fromRGB(60, 60, 80)
+            BStroke.Thickness = 1
+
+            local FlagLbl = Instance.new("TextLabel", Btn)
+            FlagLbl.Text = flag
+            FlagLbl.Size = UDim2.new(1, 0, 0, 26)
+            FlagLbl.Position = UDim2.new(0, 0, 0, 4)
+            FlagLbl.BackgroundTransparency = 1
+            FlagLbl.TextScaled = true
+            FlagLbl.ZIndex = 55
+
+            local NameLbl = Instance.new("TextLabel", Btn)
+            NameLbl.Text = text
+            NameLbl.Size = UDim2.new(1, 0, 0, 18)
+            NameLbl.Position = UDim2.new(0, 0, 0, 30)
+            NameLbl.BackgroundTransparency = 1
+            NameLbl.TextColor3 = Color3.fromRGB(170, 170, 190)
+            NameLbl.Font = Enum.Font.GothamMedium
+            NameLbl.TextSize = 11
+            NameLbl.ZIndex = 55
+
+            Btn.MouseEnter:Connect(function()
+                Tween(Btn, {BackgroundColor3 = Color3.fromRGB(99, 102, 241)}, 0.2)
+                Tween(BStroke, {Color = Color3.fromRGB(99, 102, 241)}, 0.2)
+                Tween(NameLbl, {TextColor3 = Color3.fromRGB(255, 255, 255)}, 0.2)
+            end)
+            Btn.MouseLeave:Connect(function()
+                Tween(Btn, {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}, 0.2)
+                Tween(BStroke, {Color = Color3.fromRGB(60, 60, 80)}, 0.2)
+                Tween(NameLbl, {TextColor3 = Color3.fromRGB(170, 170, 190)}, 0.2)
+            end)
+            Btn.MouseButton1Click:Connect(function()
+                Tween(LangCard, {Position = UDim2.new(-0.6, 0, 0.5, -110)}, 0.4, Enum.EasingStyle.Quart)
+                Tween(BG, {BackgroundTransparency = 1}, 0.5)
+                task.wait(0.5)
+                Gui:Destroy()
+                if onDone then onDone(langKey) end
+            end)
+        end
+
+        MakeLangBtn("ภาษาไทย", "🇹🇭", -130, "TH")
+        MakeLangBtn("English", "🇺🇸", 10, "EN")
+
+        Tween(LangCard, {Position = UDim2.new(0.5, -160, 0.5, -110)}, 0.5, Enum.EasingStyle.Back)
+    end)
 end
 
 return Library
