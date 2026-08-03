@@ -1,20 +1,27 @@
--- [[ pano-ui / Library.lua ]] --
+-- [[ pano-ui / Library.lua — v2 "Aurora" visual overhaul ]] --
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players          = game:GetService("Players")
+local Debris           = game:GetService("Debris")
 local LocalPlayer      = Players.LocalPlayer
-local Mouse            = LocalPlayer:GetMouse()
 
 local Library = {
     Theme = {
-        Main       = Color3.fromRGB(10, 10, 13),
-        Accent     = Color3.fromRGB(99, 102, 241),
-        Section    = Color3.fromRGB(20, 20, 26),
-        SectionHov = Color3.fromRGB(28, 28, 36),
-        Text       = Color3.fromRGB(240, 240, 248),
-        SubText    = Color3.fromRGB(130, 130, 150),
-        Border     = Color3.fromRGB(38, 38, 50),
-        Corner     = UDim.new(0, 12),
+        Main       = Color3.fromRGB(8, 8, 12),
+        MainAlt    = Color3.fromRGB(18, 18, 26),
+        Accent     = Color3.fromRGB(129, 118, 255),
+        AccentAlt  = Color3.fromRGB(78, 205, 255),
+        Section    = Color3.fromRGB(17, 17, 24),
+        SectionHov = Color3.fromRGB(26, 26, 36),
+        Text       = Color3.fromRGB(245, 245, 250),
+        SubText    = Color3.fromRGB(140, 140, 162),
+        Border     = Color3.fromRGB(40, 40, 54),
+        Success    = Color3.fromRGB(94, 222, 156),
+        Warning    = Color3.fromRGB(255, 196, 92),
+        Danger     = Color3.fromRGB(255, 100, 110),
+        Corner     = UDim.new(0, 16),
+        Font       = Enum.Font.GothamMedium,
+        FontBold   = Enum.Font.GothamBold,
     },
     NotifStack      = 0,
     Keybind         = Enum.KeyCode.RightControl,
@@ -24,47 +31,118 @@ local Library = {
     _ScreenGui      = nil,
 }
 
+--══════════════════════════════════════════
+-- Core helpers
+--══════════════════════════════════════════
 local function Tween(obj, props, t, style, dir)
-    TweenService:Create(obj, TweenInfo.new(
-        t     or 0.25,
-        style or Enum.EasingStyle.Quart,
+    local tw = TweenService:Create(obj, TweenInfo.new(
+        t     or 0.28,
+        style or Enum.EasingStyle.Quint,
         dir   or Enum.EasingDirection.Out
-    ), props):Play()
-end
-
-local function Shadow(parent)
-    local s = Instance.new("ImageLabel", parent)
-    s.Name               = "_Shadow"
-    s.AnchorPoint        = Vector2.new(0.5, 0.5)
-    s.BackgroundTransparency = 1
-    s.Position           = UDim2.new(0.5, 0, 0.5, 8)
-    s.Size               = UDim2.new(1, 40, 1, 40)
-    s.ZIndex             = parent.ZIndex - 1
-    s.Image              = "rbxassetid://6014261993"
-    s.ImageColor3        = Color3.new(0, 0, 0)
-    s.ImageTransparency  = 0.45
-    s.ScaleType          = Enum.ScaleType.Slice
-    s.SliceCenter        = Rect.new(49, 49, 450, 450)
-    return s
+    ), props)
+    tw:Play()
+    return tw
 end
 
 local function Corner(parent, r)
     local c = Instance.new("UICorner", parent)
-    c.CornerRadius = r or UDim.new(0, 8)
+    c.CornerRadius = r or UDim.new(0, 10)
     return c
 end
 
 local function Stroke(parent, color, thick, trans)
     local s = Instance.new("UIStroke", parent)
-    s.Color        = color or Color3.fromRGB(38, 38, 50)
+    s.Color        = color or Color3.fromRGB(40, 40, 54)
     s.Thickness    = thick or 1
     s.Transparency = trans or 0.5
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     return s
 end
 
--- ══════════════════════════════════
---  UpdateTheme — แก้ให้ครอบคลุม
--- ══════════════════════════════════
+local function Gradient(parent, sequence, rotation, transp)
+    local g = Instance.new("UIGradient", parent)
+    g.Color = sequence
+    g.Rotation = rotation or 0
+    if transp then g.Transparency = transp end
+    return g
+end
+
+local function AccentGradient(parent, rotation)
+    return Gradient(parent, ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Library.Theme.Accent),
+        ColorSequenceKeypoint.new(1, Library.Theme.AccentAlt),
+    }), rotation or 90)
+end
+
+-- Soft layered glow/shadow (two stacked blurred images reads much softer than one)
+local function Shadow(parent, strength)
+    strength = strength or 1
+    local s = Instance.new("ImageLabel", parent)
+    s.Name = "_Shadow"
+    s.AnchorPoint = Vector2.new(0.5, 0.5)
+    s.BackgroundTransparency = 1
+    s.Position = UDim2.new(0.5, 0, 0.5, 6)
+    s.Size = UDim2.new(1, 50 * strength, 1, 50 * strength)
+    s.ZIndex = (parent.ZIndex or 1) - 1
+    s.Image = "rbxassetid://6014261993"
+    s.ImageColor3 = Color3.new(0, 0, 0)
+    s.ImageTransparency = 0.4
+    s.ScaleType = Enum.ScaleType.Slice
+    s.SliceCenter = Rect.new(49, 49, 450, 450)
+    return s
+end
+
+local function Glow(parent, color, strength)
+    local g = Instance.new("ImageLabel", parent)
+    g.Name = "_Glow"
+    g.AnchorPoint = Vector2.new(0.5, 0.5)
+    g.BackgroundTransparency = 1
+    g.Position = UDim2.new(0.5, 0, 0.5, 0)
+    g.Size = UDim2.new(1, 30 * (strength or 1), 1, 30 * (strength or 1))
+    g.ZIndex = (parent.ZIndex or 1) - 1
+    g.Image = "rbxassetid://6014261993"
+    g.ImageColor3 = color or Library.Theme.Accent
+    g.ImageTransparency = 0.55
+    g.ScaleType = Enum.ScaleType.Slice
+    g.SliceCenter = Rect.new(49, 49, 450, 450)
+    return g
+end
+
+-- Material-style ripple feedback on click
+local function Ripple(btn, color)
+    btn.ClipsDescendants = true
+    btn.MouseButton1Down:Connect(function(x, y)
+        local ok, rel = pcall(function() return Vector2.new(x, y) - btn.AbsolutePosition end)
+        if not ok then return end
+        local r = Instance.new("Frame", btn)
+        r.AnchorPoint = Vector2.new(0.5, 0.5)
+        r.Position = UDim2.new(0, rel.X, 0, rel.Y)
+        r.Size = UDim2.new(0, 0, 0, 0)
+        r.BackgroundColor3 = color or Color3.new(1, 1, 1)
+        r.BackgroundTransparency = 0.55
+        r.BorderSizePixel = 0
+        r.ZIndex = btn.ZIndex + 5
+        Corner(r, UDim.new(1, 0))
+        local maxSize = math.max(btn.AbsoluteSize.X, btn.AbsoluteSize.Y) * 1.8
+        Tween(r, {Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1}, 0.55)
+        Debris:AddItem(r, 0.6)
+    end)
+end
+
+local function Pulse(obj, prop, a, b, dur)
+    task.spawn(function()
+        while obj and obj.Parent do
+            Tween(obj, {[prop] = b}, dur, Enum.EasingStyle.Sine)
+            task.wait(dur)
+            Tween(obj, {[prop] = a}, dur, Enum.EasingStyle.Sine)
+            task.wait(dur)
+        end
+    end)
+end
+
+--══════════════════════════════════════════
+--  UpdateTheme
+--══════════════════════════════════════════
 function Library:UpdateTheme(newColor)
     self.Theme.Accent = newColor
     for _, obj in pairs(self.ElementsToTheme) do
@@ -75,248 +153,360 @@ function Library:UpdateTheme(newColor)
             Tween(obj, {BackgroundColor3 = newColor})
         elseif obj:IsA("TextLabel") then
             Tween(obj, {TextColor3 = newColor})
+        elseif obj:IsA("ImageLabel") then
+            Tween(obj, {ImageColor3 = newColor})
         end
     end
 end
 
--- ══════════════════════════════════
---  Notify
--- ══════════════════════════════════
-function Library:Notify(title, msg, duration)
+--══════════════════════════════════════════
+--  Notify — redesigned glass card w/ type icons
+--══════════════════════════════════════════
+local NotifIcons = { info = "ℹ", success = "✓", warning = "!", error = "✕" }
+local NotifColors = {
+    info    = function() return Library.Theme.Accent end,
+    success = function() return Library.Theme.Success end,
+    warning = function() return Library.Theme.Warning end,
+    error   = function() return Library.Theme.Danger end,
+}
+
+function Library:Notify(title, msg, duration, kind)
+    kind = kind or "info"
+    local color = (NotifColors[kind] or NotifColors.info)()
+
     local Screen = game.CoreGui:FindFirstChild("_PanoNotifs")
         or Instance.new("ScreenGui", game.CoreGui)
     Screen.Name = "_PanoNotifs"
+    Screen.ResetOnSpawn = false
 
-    local H = 68; local gap = 10
-    local finalY = -(14 + H + self.NotifStack * (H + gap))
+    local H = 74; local gap = 12
+    local finalY = -(16 + H + self.NotifStack * (H + gap))
 
     local F = Instance.new("Frame", Screen)
-    F.Size = UDim2.new(0,270,0,H); F.Position = UDim2.new(1,10,1,finalY)
-    F.BackgroundColor3 = self.Theme.Section; F.BorderSizePixel = 0; F.ZIndex = 100
-    Corner(F, UDim.new(0,10)); Shadow(F)
-    local FS = Stroke(F, self.Theme.Accent, 1, 0.6)
-    table.insert(self.ElementsToTheme, FS)
+    F.Size = UDim2.new(0, 284, 0, H)
+    F.Position = UDim2.new(1, 20, 1, finalY)
+    F.BackgroundColor3 = self.Theme.Section
+    F.BorderSizePixel = 0
+    F.ZIndex = 100
+    Corner(F, UDim.new(0, 14))
+    Shadow(F, 1.1)
+    local FS = Stroke(F, color, 1, 0.55)
 
-    local Bar = Instance.new("Frame", F)
-    Bar.Size = UDim2.new(0,3,1,-14); Bar.Position = UDim2.new(0,0,0,7)
-    Bar.BackgroundColor3 = self.Theme.Accent; Bar.BorderSizePixel = 0
-    Corner(Bar, UDim.new(0,4))
-    table.insert(self.ElementsToTheme, Bar)
+    local IconWrap = Instance.new("Frame", F)
+    IconWrap.Size = UDim2.new(0, 36, 0, 36)
+    IconWrap.Position = UDim2.new(0, 12, 0, 12)
+    IconWrap.BackgroundColor3 = color
+    IconWrap.BackgroundTransparency = 0.82
+    IconWrap.BorderSizePixel = 0
+    IconWrap.ZIndex = 101
+    Corner(IconWrap, UDim.new(0, 10))
+
+    local IconLbl = Instance.new("TextLabel", IconWrap)
+    IconLbl.Size = UDim2.new(1, 0, 1, 0)
+    IconLbl.BackgroundTransparency = 1
+    IconLbl.Text = NotifIcons[kind] or NotifIcons.info
+    IconLbl.TextColor3 = color
+    IconLbl.Font = self.Theme.FontBold
+    IconLbl.TextSize = 16
+    IconLbl.ZIndex = 102
 
     local TL = Instance.new("TextLabel", F)
-    TL.Text = title; TL.Size = UDim2.new(1,-16,0,26); TL.Position = UDim2.new(0,14,0,6)
-    TL.BackgroundTransparency = 1; TL.TextColor3 = self.Theme.Accent
+    TL.Text = title
+    TL.Size = UDim2.new(1, -62, 0, 20)
+    TL.Position = UDim2.new(0, 58, 0, 12)
+    TL.BackgroundTransparency = 1
+    TL.TextColor3 = self.Theme.Text
     TL.TextXAlignment = Enum.TextXAlignment.Left
-    TL.Font = Enum.Font.GothamBold; TL.TextSize = 13; TL.ZIndex = 101
-    table.insert(self.ElementsToTheme, TL)
+    TL.Font = self.Theme.FontBold
+    TL.TextSize = 13
+    TL.ZIndex = 101
 
     local ML = Instance.new("TextLabel", F)
-    ML.Text = msg; ML.Size = UDim2.new(1,-18,0,28); ML.Position = UDim2.new(0,14,0,30)
-    ML.BackgroundTransparency = 1; ML.TextColor3 = self.Theme.SubText
-    ML.TextXAlignment = Enum.TextXAlignment.Left; ML.TextWrapped = true
-    ML.Font = Enum.Font.Gotham; ML.TextSize = 11; ML.ZIndex = 101
+    ML.Text = msg
+    ML.Size = UDim2.new(1, -68, 0, 28)
+    ML.Position = UDim2.new(0, 58, 0, 32)
+    ML.BackgroundTransparency = 1
+    ML.TextColor3 = self.Theme.SubText
+    ML.TextXAlignment = Enum.TextXAlignment.Left
+    ML.TextYAlignment = Enum.TextYAlignment.Top
+    ML.TextWrapped = true
+    ML.Font = self.Theme.Font
+    ML.TextSize = 11
+    ML.ZIndex = 101
 
-    local Prog = Instance.new("Frame", F)
-    Prog.Size = UDim2.new(1,0,0,2); Prog.Position = UDim2.new(0,0,1,-2)
-    Prog.BackgroundColor3 = self.Theme.Accent; Prog.BorderSizePixel = 0
-    Corner(Prog, UDim.new(0,2))
-    table.insert(self.ElementsToTheme, Prog)
+    local ProgBG = Instance.new("Frame", F)
+    ProgBG.Size = UDim2.new(1, -20, 0, 3)
+    ProgBG.Position = UDim2.new(0, 10, 1, -9)
+    ProgBG.BackgroundColor3 = color
+    ProgBG.BackgroundTransparency = 0.85
+    ProgBG.BorderSizePixel = 0
+    Corner(ProgBG, UDim.new(1, 0))
+
+    local Prog = Instance.new("Frame", ProgBG)
+    Prog.Size = UDim2.new(1, 0, 1, 0)
+    Prog.BackgroundColor3 = color
+    Prog.BorderSizePixel = 0
+    Corner(Prog, UDim.new(1, 0))
 
     self.NotifStack += 1
-    F:TweenPosition(UDim2.new(1,-280,1,finalY), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.45)
+    F:TweenPosition(UDim2.new(1, -296, 1, finalY), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.5, true)
 
-    local dur = duration or 3
+    local dur = duration or 3.5
     task.spawn(function()
         local s = tick()
-        while tick()-s < dur do
-            Prog.Size = UDim2.new(1-(tick()-s)/dur, 0, 0, 2); task.wait()
+        while F.Parent and tick() - s < dur do
+            Prog.Size = UDim2.new(1 - (tick() - s) / dur, 0, 1, 0)
+            task.wait()
         end
     end)
     task.delay(dur, function()
-        F:TweenPosition(UDim2.new(1,10,1,finalY), Enum.EasingDirection.In, Enum.EasingStyle.Sine, 0.4)
-        task.wait(0.4); F:Destroy(); self.NotifStack -= 1
+        if not F.Parent then return end
+        F:TweenPosition(UDim2.new(1, 20, 1, finalY), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.35, true)
+        task.wait(0.35)
+        F:Destroy()
+        self.NotifStack -= 1
     end)
 end
 
--- ══════════════════════════════════
---  ShowLoadingAndLang
--- ══════════════════════════════════
+--══════════════════════════════════════════
+--  ShowLoadingAndLang — smoother two-phase intro
+--══════════════════════════════════════════
 function Library:ShowLoadingAndLang(langTable, onDone)
     local Gui = Instance.new("ScreenGui", game.CoreGui)
     Gui.Name = "_PanoLoader"
     Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
     local BG = Instance.new("Frame", Gui)
-    BG.Size = UDim2.new(1,0,1,0)
-    BG.BackgroundColor3 = Color3.fromRGB(6,6,8)
-    BG.BorderSizePixel = 0; BG.ZIndex = 200
+    BG.Size = UDim2.new(1, 0, 1, 0)
+    BG.BackgroundColor3 = Color3.fromRGB(5, 5, 7)
+    BG.BorderSizePixel = 0
+    BG.ZIndex = 200
 
-    for _ = 1, 14 do
+    -- ambient floating particles
+    for _ = 1, 22 do
         local d = Instance.new("Frame", BG)
-        local sz = math.random(2,5)
-        d.Size = UDim2.new(0,sz,0,sz)
-        d.Position = UDim2.new(math.random(),0,math.random(),0)
-        d.BackgroundColor3 = self.Theme.Accent
-        d.BackgroundTransparency = math.random(40,80)/100
-        d.BorderSizePixel = 0; d.ZIndex = 201
-        Corner(d, UDim.new(1,0))
+        local sz = math.random(2, 4)
+        d.Size = UDim2.new(0, sz, 0, sz)
+        d.Position = UDim2.new(math.random(), 0, math.random(), 0)
+        d.BackgroundColor3 = math.random() > 0.5 and self.Theme.Accent or self.Theme.AccentAlt
+        d.BackgroundTransparency = math.random(45, 85) / 100
+        d.BorderSizePixel = 0
+        d.ZIndex = 201
+        Corner(d, UDim.new(1, 0))
+        Pulse(d, "BackgroundTransparency", d.BackgroundTransparency, math.clamp(d.BackgroundTransparency + 0.15, 0, 1), math.random(15, 30) / 10)
     end
 
     -- Phase 1: Loading card
     local LC = Instance.new("Frame", BG)
-    LC.Size = UDim2.new(0,320,0,260)
-    LC.Position = UDim2.new(0.5,-160,0.6,-130)
-    LC.BackgroundColor3 = Color3.fromRGB(16,16,22)
-    LC.BackgroundTransparency = 1; LC.BorderSizePixel = 0; LC.ZIndex = 202
-    Corner(LC, UDim.new(0,16)); Shadow(LC)
-    Stroke(LC, self.Theme.Accent, 1, 0.5)
+    LC.Size = UDim2.new(0, 330, 0, 270)
+    LC.Position = UDim2.new(0.5, -165, 0.6, -135)
+    LC.BackgroundColor3 = self.Theme.MainAlt
+    LC.BackgroundTransparency = 1
+    LC.BorderSizePixel = 0
+    LC.ZIndex = 202
+    Corner(LC, UDim.new(0, 20))
+    Shadow(LC, 1.3)
+    Glow(LC, self.Theme.Accent, 0.6)
+    local LCStroke = Stroke(LC, self.Theme.Accent, 1, 0.45)
 
     local LCLine = Instance.new("Frame", LC)
-    LCLine.Size = UDim2.new(1,0,0,2)
+    LCLine.Size = UDim2.new(1, 0, 0, 3)
     LCLine.BackgroundColor3 = self.Theme.Accent
-    LCLine.BorderSizePixel = 0; LCLine.ZIndex = 203
-    Corner(LCLine)
+    LCLine.BorderSizePixel = 0
+    LCLine.ZIndex = 203
+    Corner(LCLine, UDim.new(1, 0))
+    AccentGradient(LCLine)
 
     local IconFrame = Instance.new("Frame", LC)
-    IconFrame.Size = UDim2.new(0,64,0,64); IconFrame.Position = UDim2.new(0.5,-32,0,20)
-    IconFrame.BackgroundColor3 = self.Theme.Accent; IconFrame.BackgroundTransparency = 0.8
-    IconFrame.BorderSizePixel = 0; IconFrame.ZIndex = 203
-    Corner(IconFrame, UDim.new(0,16))
+    IconFrame.Size = UDim2.new(0, 68, 0, 68)
+    IconFrame.Position = UDim2.new(0.5, -34, 0, 24)
+    IconFrame.BackgroundColor3 = self.Theme.Accent
+    IconFrame.BackgroundTransparency = 0.78
+    IconFrame.BorderSizePixel = 0
+    IconFrame.ZIndex = 203
+    Corner(IconFrame, UDim.new(0, 20))
+    local IconStroke = Stroke(IconFrame, self.Theme.Accent, 1, 0.4)
     local IconLbl = Instance.new("TextLabel", IconFrame)
-    IconLbl.Size = UDim2.new(1,0,1,0); IconLbl.BackgroundTransparency = 1
-    IconLbl.Text = "◈"; IconLbl.TextScaled = true; IconLbl.ZIndex = 204
-    IconLbl.TextColor3 = self.Theme.Accent; IconLbl.Font = Enum.Font.GothamBold
+    IconLbl.Size = UDim2.new(1, 0, 1, 0)
+    IconLbl.BackgroundTransparency = 1
+    IconLbl.Text = "◈"
+    IconLbl.TextScaled = true
+    IconLbl.ZIndex = 204
+    IconLbl.TextColor3 = self.Theme.Accent
+    IconLbl.Font = self.Theme.FontBold
+    Pulse(IconFrame, "BackgroundTransparency", 0.78, 0.62, 0.9)
 
     local function CardLabel(text, yPos, size, color, bold)
         local L = Instance.new("TextLabel", LC)
-        L.Text = text; L.Size = UDim2.new(1,-20,0,size+4)
-        L.Position = UDim2.new(0,10,0,yPos)
+        L.Text = text
+        L.Size = UDim2.new(1, -20, 0, size + 4)
+        L.Position = UDim2.new(0, 10, 0, yPos)
         L.BackgroundTransparency = 1
-        L.TextColor3 = color or Color3.fromRGB(240,240,248)
-        L.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
-        L.TextSize = size; L.ZIndex = 203
+        L.TextColor3 = color or self.Theme.Text
+        L.Font = bold and self.Theme.FontBold or self.Theme.Font
+        L.TextSize = size
+        L.ZIndex = 203
         return L
     end
 
-    CardLabel("pano-ui", 96, 22, Color3.fromRGB(240,240,248), true)
-    CardLabel("Lightweight UI Library", 128, 11, self.Theme.Accent, false)
+    CardLabel("pano-ui", 100, 23, self.Theme.Text, true)
+    CardLabel("Lightweight UI Library", 132, 11, self.Theme.Accent, false)
 
     local BarBG = Instance.new("Frame", LC)
-    BarBG.Size = UDim2.new(0.8,0,0,5); BarBG.Position = UDim2.new(0.1,0,0,162)
-    BarBG.BackgroundColor3 = Color3.fromRGB(30,30,40); BarBG.BorderSizePixel = 0; BarBG.ZIndex = 203
-    Corner(BarBG, UDim.new(0,3))
+    BarBG.Size = UDim2.new(0.8, 0, 0, 6)
+    BarBG.Position = UDim2.new(0.1, 0, 0, 170)
+    BarBG.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+    BarBG.BorderSizePixel = 0
+    BarBG.ZIndex = 203
+    Corner(BarBG, UDim.new(1, 0))
     local BarFill = Instance.new("Frame", BarBG)
-    BarFill.Size = UDim2.new(0,0,1,0); BarFill.BackgroundColor3 = self.Theme.Accent
-    BarFill.BorderSizePixel = 0; BarFill.ZIndex = 204
-    Corner(BarFill, UDim.new(0,3))
+    BarFill.Size = UDim2.new(0, 0, 1, 0)
+    BarFill.BorderSizePixel = 0
+    BarFill.ZIndex = 204
+    Corner(BarFill, UDim.new(1, 0))
+    AccentGradient(BarFill)
 
-    local StatusLbl = CardLabel("Initializing...", 176, 11, Color3.fromRGB(100,100,120), false)
-    CardLabel("pano-ui  •  github", 234, 10, Color3.fromRGB(50,50,70), false)
+    local StatusLbl = CardLabel("Initializing...", 186, 11, Color3.fromRGB(120, 120, 140), false)
+    CardLabel("pano-ui  •  github", 244, 10, Color3.fromRGB(55, 55, 74), false)
 
-    Tween(LC, {BackgroundTransparency=0, Position=UDim2.new(0.5,-160,0.5,-130)}, 0.6, Enum.EasingStyle.Back)
+    Tween(LC, {BackgroundTransparency = 0, Position = UDim2.new(0.5, -165, 0.5, -135)}, 0.6, Enum.EasingStyle.Back)
 
     task.spawn(function()
         task.wait(0.4)
         local steps = {
-            {t=0.4, text="Loading core...",  pct=0.25},
-            {t=0.4, text="Building UI...",   pct=0.55},
-            {t=0.35,text="Connecting...",    pct=0.80},
-            {t=0.3, text="Almost ready...",  pct=0.95},
-            {t=0.25,text="Done! ✓",          pct=1.00},
+            {t = 0.4,  text = "Loading core...",  pct = 0.25},
+            {t = 0.4,  text = "Building UI...",   pct = 0.55},
+            {t = 0.35, text = "Connecting...",    pct = 0.80},
+            {t = 0.3,  text = "Almost ready...",  pct = 0.95},
+            {t = 0.25, text = "Done! ✓",          pct = 1.00},
         }
         for _, s in ipairs(steps) do
             task.wait(s.t)
             StatusLbl.Text = s.text
-            Tween(BarFill, {Size=UDim2.new(s.pct,0,1,0)}, 0.3)
+            Tween(BarFill, {Size = UDim2.new(s.pct, 0, 1, 0)}, 0.3)
         end
         task.wait(0.5)
 
-        Tween(LC, {Position=UDim2.new(-0.7,-160,0.5,-130)}, 0.45, Enum.EasingStyle.Quart)
-        task.wait(0.5); LC.Visible = false
+        Tween(LC, {Position = UDim2.new(-0.7, -165, 0.5, -135)}, 0.45, Enum.EasingStyle.Quart)
+        task.wait(0.5)
+        LC.Visible = false
 
         if not langTable then
-            Tween(BG, {BackgroundTransparency=1}, 0.4)
-            task.wait(0.45); Gui:Destroy(); onDone()
+            Tween(BG, {BackgroundTransparency = 1}, 0.4)
+            task.wait(0.45)
+            Gui:Destroy()
+            onDone()
             return
         end
 
-        -- Phase 2: Lang card
+        -- Phase 2: Language select
         local LG = Instance.new("Frame", BG)
-        LG.Size = UDim2.new(0,320,0,210)
-        LG.Position = UDim2.new(1.2,0,0.5,-105)
-        LG.BackgroundColor3 = Color3.fromRGB(16,16,22)
-        LG.BorderSizePixel = 0; LG.ZIndex = 202
-        Corner(LG, UDim.new(0,16)); Shadow(LG)
-        Stroke(LG, self.Theme.Accent, 1, 0.5)
+        LG.Size = UDim2.new(0, 330, 0, 220)
+        LG.Position = UDim2.new(1.2, 0, 0.5, -110)
+        LG.BackgroundColor3 = self.Theme.MainAlt
+        LG.BorderSizePixel = 0
+        LG.ZIndex = 202
+        Corner(LG, UDim.new(0, 20))
+        Shadow(LG, 1.3)
+        Glow(LG, self.Theme.Accent, 0.6)
+        Stroke(LG, self.Theme.Accent, 1, 0.45)
 
         local LGLine = Instance.new("Frame", LG)
-        LGLine.Size = UDim2.new(1,0,0,2)
-        LGLine.BackgroundColor3 = self.Theme.Accent
-        LGLine.BorderSizePixel = 0; LGLine.ZIndex = 203; Corner(LGLine)
+        LGLine.Size = UDim2.new(1, 0, 0, 3)
+        LGLine.BorderSizePixel = 0
+        LGLine.ZIndex = 203
+        Corner(LGLine, UDim.new(1, 0))
+        AccentGradient(LGLine)
 
         local GlobeLbl = Instance.new("TextLabel", LG)
-        GlobeLbl.Text = "🌐"; GlobeLbl.Size = UDim2.new(1,0,0,38); GlobeLbl.Position = UDim2.new(0,0,0,14)
-        GlobeLbl.BackgroundTransparency = 1; GlobeLbl.TextSize = 28; GlobeLbl.ZIndex = 203
+        GlobeLbl.Text = "🌐"
+        GlobeLbl.Size = UDim2.new(1, 0, 0, 40)
+        GlobeLbl.Position = UDim2.new(0, 0, 0, 16)
+        GlobeLbl.BackgroundTransparency = 1
+        GlobeLbl.TextSize = 30
+        GlobeLbl.ZIndex = 203
 
         local LGTitle = Instance.new("TextLabel", LG)
-        LGTitle.Text = "Select Language"; LGTitle.Size = UDim2.new(1,0,0,24); LGTitle.Position = UDim2.new(0,0,0,58)
-        LGTitle.BackgroundTransparency = 1; LGTitle.TextColor3 = Color3.fromRGB(240,240,248)
-        LGTitle.Font = Enum.Font.GothamBold; LGTitle.TextSize = 16; LGTitle.ZIndex = 203
+        LGTitle.Text = "Select Language"
+        LGTitle.Size = UDim2.new(1, 0, 0, 24)
+        LGTitle.Position = UDim2.new(0, 0, 0, 62)
+        LGTitle.BackgroundTransparency = 1
+        LGTitle.TextColor3 = self.Theme.Text
+        LGTitle.Font = self.Theme.FontBold
+        LGTitle.TextSize = 17
+        LGTitle.ZIndex = 203
 
         local LGSub = Instance.new("TextLabel", LG)
-        LGSub.Text = "เลือกภาษาที่ต้องการ"; LGSub.Size = UDim2.new(1,0,0,18); LGSub.Position = UDim2.new(0,0,0,84)
-        LGSub.BackgroundTransparency = 1; LGSub.TextColor3 = self.Theme.Accent
-        LGSub.Font = Enum.Font.Gotham; LGSub.TextSize = 11; LGSub.ZIndex = 203
-
-        local Div = Instance.new("Frame", LG)
-        Div.Size = UDim2.new(0.85,0,0,1); Div.Position = UDim2.new(0.075,0,0,110)
-        Div.BackgroundColor3 = Color3.fromRGB(40,40,55); Div.BorderSizePixel = 0; Div.ZIndex = 203
+        LGSub.Text = "เลือกภาษาที่ต้องการ"
+        LGSub.Size = UDim2.new(1, 0, 0, 18)
+        LGSub.Position = UDim2.new(0, 0, 0, 88)
+        LGSub.BackgroundTransparency = 1
+        LGSub.TextColor3 = self.Theme.Accent
+        LGSub.Font = self.Theme.Font
+        LGSub.TextSize = 11
+        LGSub.ZIndex = 203
 
         local function MakeLangBtn(label, flag, xOff, key)
             local Btn = Instance.new("TextButton", LG)
-            Btn.Size = UDim2.new(0,120,0,52)
-            Btn.Position = UDim2.new(0.5,xOff,0,120)
-            Btn.BackgroundColor3 = Color3.fromRGB(22,22,30)
-            Btn.Text = ""; Btn.BorderSizePixel = 0; Btn.ZIndex = 204
-            Corner(Btn, UDim.new(0,10))
-            local BS = Stroke(Btn, Color3.fromRGB(60,60,80))
+            Btn.Size = UDim2.new(0, 126, 0, 58)
+            Btn.Position = UDim2.new(0.5, xOff, 0, 124)
+            Btn.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+            Btn.Text = ""
+            Btn.AutoButtonColor = false
+            Btn.BorderSizePixel = 0
+            Btn.ZIndex = 204
+            Corner(Btn, UDim.new(0, 14))
+            local BS = Stroke(Btn, Color3.fromRGB(60, 60, 80), 1, 0.3)
+            Ripple(Btn, self.Theme.Accent)
 
             local FL = Instance.new("TextLabel", Btn)
-            FL.Text = flag; FL.Size = UDim2.new(1,0,0,26); FL.Position = UDim2.new(0,0,0,4)
-            FL.BackgroundTransparency = 1; FL.TextScaled = true; FL.ZIndex = 205
+            FL.Text = flag
+            FL.Size = UDim2.new(1, 0, 0, 28)
+            FL.Position = UDim2.new(0, 0, 0, 6)
+            FL.BackgroundTransparency = 1
+            FL.TextScaled = true
+            FL.ZIndex = 205
 
             local NL = Instance.new("TextLabel", Btn)
-            NL.Text = label; NL.Size = UDim2.new(1,0,0,18); NL.Position = UDim2.new(0,0,0,30)
-            NL.BackgroundTransparency = 1; NL.TextColor3 = Color3.fromRGB(170,170,190)
-            NL.Font = Enum.Font.GothamMedium; NL.TextSize = 11; NL.ZIndex = 205
+            NL.Text = label
+            NL.Size = UDim2.new(1, 0, 0, 18)
+            NL.Position = UDim2.new(0, 0, 0, 34)
+            NL.BackgroundTransparency = 1
+            NL.TextColor3 = Color3.fromRGB(175, 175, 195)
+            NL.Font = self.Theme.FontBold
+            NL.TextSize = 11
+            NL.ZIndex = 205
 
             Btn.MouseEnter:Connect(function()
-                Tween(Btn,{BackgroundColor3=self.Theme.Accent},0.2)
-                Tween(BS,{Color=self.Theme.Accent},0.2)
-                Tween(NL,{TextColor3=Color3.fromRGB(255,255,255)},0.2)
+                Tween(Btn, {BackgroundColor3 = self.Theme.Accent}, 0.2)
+                Tween(BS, {Color = self.Theme.Accent, Transparency = 0}, 0.2)
+                Tween(NL, {TextColor3 = Color3.fromRGB(255, 255, 255)}, 0.2)
+                Tween(Btn, {Size = UDim2.new(0, 130, 0, 61)}, 0.2)
             end)
             Btn.MouseLeave:Connect(function()
-                Tween(Btn,{BackgroundColor3=Color3.fromRGB(22,22,30)},0.2)
-                Tween(BS,{Color=Color3.fromRGB(60,60,80)},0.2)
-                Tween(NL,{TextColor3=Color3.fromRGB(170,170,190)},0.2)
+                Tween(Btn, {BackgroundColor3 = Color3.fromRGB(22, 22, 30)}, 0.2)
+                Tween(BS, {Color = Color3.fromRGB(60, 60, 80), Transparency = 0.3}, 0.2)
+                Tween(NL, {TextColor3 = Color3.fromRGB(175, 175, 195)}, 0.2)
+                Tween(Btn, {Size = UDim2.new(0, 126, 0, 58)}, 0.2)
             end)
             Btn.MouseButton1Click:Connect(function()
-                Tween(LG,{Position=UDim2.new(-0.7,0,0.5,-105)},0.4,Enum.EasingStyle.Quart)
-                Tween(BG,{BackgroundTransparency=1},0.5)
-                task.wait(0.5); Gui:Destroy()
+                Tween(LG, {Position = UDim2.new(-0.7, 0, 0.5, -110)}, 0.4, Enum.EasingStyle.Quart)
+                Tween(BG, {BackgroundTransparency = 1}, 0.5)
+                task.wait(0.5)
+                Gui:Destroy()
                 onDone(key, langTable[key])
             end)
         end
 
-        MakeLangBtn("ภาษาไทย","🇹🇭",-130,"TH")
-        MakeLangBtn("English","🇺🇸",10,"EN")
-        Tween(LG,{Position=UDim2.new(0.5,-160,0.5,-105)},0.5,Enum.EasingStyle.Back)
+        MakeLangBtn("ภาษาไทย", "🇹🇭", -134, "TH")
+        MakeLangBtn("English", "🇺🇸", 8, "EN")
+        Tween(LG, {Position = UDim2.new(0.5, -165, 0.5, -110)}, 0.5, Enum.EasingStyle.Back)
     end)
 end
 
--- ══════════════════════════════════
+--══════════════════════════════════════════
 --  CreateWindow
--- ══════════════════════════════════
+--══════════════════════════════════════════
 function Library:CreateWindow(title)
     local SG = Instance.new("ScreenGui", game.CoreGui)
     SG.Name = "_PanoUI"
@@ -324,203 +514,278 @@ function Library:CreateWindow(title)
     self._ScreenGui = SG
 
     local isMobile = UserInputService.TouchEnabled
-    local W = isMobile and 480 or 590
-    local H = isMobile and 320 or 380
+    local W = isMobile and 500 or 620
+    local H = isMobile and 340 or 400
 
     local Main = Instance.new("Frame", SG)
-    Main.Size = UDim2.new(0,W,0,H)
-    Main.Position = UDim2.new(0.5,-W/2,0.6,-H/2)
+    Main.Size = UDim2.new(0, W, 0, H)
+    Main.Position = UDim2.new(0.5, -W / 2, 0.6, -H / 2)
     Main.BackgroundColor3 = self.Theme.Main
-    Main.BorderSizePixel = 0; Main.ClipsDescendants = true
+    Main.BorderSizePixel = 0
+    Main.ClipsDescendants = true
     Main.BackgroundTransparency = 1
-    Corner(Main, self.Theme.Corner); Shadow(Main)
-    local MainStroke = Stroke(Main, self.Theme.Accent, 1, 0.7)
+    Corner(Main, self.Theme.Corner)
+    Shadow(Main, 1.4)
+    local MainStroke = Stroke(Main, self.Theme.Accent, 1, 0.72)
     table.insert(self.ElementsToTheme, MainStroke)
 
-    local Grad = Instance.new("UIGradient", Main)
-    Grad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(26,26,36)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(10,10,13)),
-    }); Grad.Rotation = 135
+    Gradient(Main, ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 22, 34)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(12, 12, 17)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 8, 11)),
+    }), 120)
 
-    Tween(Main, {BackgroundTransparency=0, Position=UDim2.new(0.5,-W/2,0.5,-H/2)}, 0.5, Enum.EasingStyle.Back)
+    Tween(Main, {BackgroundTransparency = 0, Position = UDim2.new(0.5, -W / 2, 0.5, -H / 2)}, 0.5, Enum.EasingStyle.Back)
 
     local TopLine = Instance.new("Frame", Main)
-    TopLine.Size = UDim2.new(1,0,0,2)
-    TopLine.BackgroundColor3 = self.Theme.Accent; TopLine.BorderSizePixel = 0
+    TopLine.Size = UDim2.new(1, 0, 0, 2)
+    TopLine.BorderSizePixel = 0
+    TopLine.ZIndex = 5
+    AccentGradient(TopLine)
     table.insert(self.ElementsToTheme, TopLine)
 
     -- Header
     local Header = Instance.new("Frame", Main)
-    Header.Size = UDim2.new(1,0,0,50); Header.BackgroundTransparency = 1
+    Header.Size = UDim2.new(1, 0, 0, 54)
+    Header.BackgroundTransparency = 1
 
     local PDot = Instance.new("Frame", Header)
-    PDot.Size = UDim2.new(0,8,0,8); PDot.Position = UDim2.new(0,16,0.5,-4)
-    PDot.BackgroundColor3 = self.Theme.Accent; PDot.BorderSizePixel = 0
-    Corner(PDot, UDim.new(1,0))
+    PDot.Size = UDim2.new(0, 9, 0, 9)
+    PDot.Position = UDim2.new(0, 18, 0.5, -4)
+    PDot.BackgroundColor3 = self.Theme.Accent
+    PDot.BorderSizePixel = 0
+    Corner(PDot, UDim.new(1, 0))
     table.insert(self.ElementsToTheme, PDot)
-    task.spawn(function()
-        while PDot and PDot.Parent do
-            Tween(PDot,{BackgroundTransparency=0.65},0.8); task.wait(0.8)
-            Tween(PDot,{BackgroundTransparency=0},0.8); task.wait(0.8)
-        end
-    end)
+    Glow(PDot, self.Theme.Accent, 0.4)
+    Pulse(PDot, "BackgroundTransparency", 0, 0.55, 0.8)
 
     local TitleL = Instance.new("TextLabel", Header)
-    TitleL.Text = title:upper(); TitleL.Size = UDim2.new(0,300,0,26); TitleL.Position = UDim2.new(0,32,0,7)
-    TitleL.TextColor3 = self.Theme.Text; TitleL.Font = Enum.Font.GothamBold; TitleL.TextSize = 15
-    TitleL.TextXAlignment = Enum.TextXAlignment.Left; TitleL.BackgroundTransparency = 1
+    TitleL.Text = title:upper()
+    TitleL.Size = UDim2.new(0, 320, 0, 26)
+    TitleL.Position = UDim2.new(0, 36, 0, 9)
+    TitleL.TextColor3 = self.Theme.Text
+    TitleL.Font = self.Theme.FontBold
+    TitleL.TextSize = 16
+    TitleL.TextXAlignment = Enum.TextXAlignment.Left
+    TitleL.BackgroundTransparency = 1
 
     local SubL = Instance.new("TextLabel", Header)
-    SubL.Text = "pano-ui library"; SubL.Size = UDim2.new(0,200,0,14); SubL.Position = UDim2.new(0,32,0,30)
-    SubL.TextColor3 = self.Theme.Accent; SubL.Font = Enum.Font.Gotham; SubL.TextSize = 10
-    SubL.TextXAlignment = Enum.TextXAlignment.Left; SubL.BackgroundTransparency = 1
+    SubL.Text = "pano-ui library  •  aurora"
+    SubL.Size = UDim2.new(0, 220, 0, 14)
+    SubL.Position = UDim2.new(0, 36, 0, 32)
+    SubL.TextColor3 = self.Theme.Accent
+    SubL.Font = self.Theme.Font
+    SubL.TextSize = 10
+    SubL.TextXAlignment = Enum.TextXAlignment.Left
+    SubL.BackgroundTransparency = 1
     table.insert(self.ElementsToTheme, SubL)
 
     local MinBtn = Instance.new("TextButton", Header)
-    MinBtn.Size = UDim2.new(0,32,0,32); MinBtn.Position = UDim2.new(1,-44,0.5,-16)
-    MinBtn.BackgroundColor3 = self.Theme.Section; MinBtn.Text = "—"
-    MinBtn.TextColor3 = self.Theme.SubText; MinBtn.Font = Enum.Font.GothamBold
-    MinBtn.TextSize = 14; MinBtn.BorderSizePixel = 0
-    Corner(MinBtn, UDim.new(0,8))
-    MinBtn.MouseEnter:Connect(function() Tween(MinBtn,{BackgroundColor3=self.Theme.Accent,TextColor3=self.Theme.Text}) end)
-    MinBtn.MouseLeave:Connect(function() Tween(MinBtn,{BackgroundColor3=self.Theme.Section,TextColor3=self.Theme.SubText}) end)
+    MinBtn.Size = UDim2.new(0, 34, 0, 34)
+    MinBtn.Position = UDim2.new(1, -46, 0.5, -17)
+    MinBtn.BackgroundColor3 = self.Theme.Section
+    MinBtn.Text = "—"
+    MinBtn.AutoButtonColor = false
+    MinBtn.TextColor3 = self.Theme.SubText
+    MinBtn.Font = self.Theme.FontBold
+    MinBtn.TextSize = 15
+    MinBtn.BorderSizePixel = 0
+    MinBtn.ZIndex = 6
+    Corner(MinBtn, UDim.new(0, 10))
+    Ripple(MinBtn, self.Theme.Accent)
+    MinBtn.MouseEnter:Connect(function() Tween(MinBtn, {BackgroundColor3 = self.Theme.Accent, TextColor3 = Color3.new(1,1,1)}) end)
+    MinBtn.MouseLeave:Connect(function() Tween(MinBtn, {BackgroundColor3 = self.Theme.Section, TextColor3 = self.Theme.SubText}) end)
 
-    -- Minimized bar
+    -- Minimized pill bar
     local MinBar = Instance.new("Frame", SG)
-    MinBar.Size = UDim2.new(0,210,0,38); MinBar.Position = UDim2.new(0.5,-105,0,10)
-    MinBar.BackgroundColor3 = self.Theme.Section; MinBar.BorderSizePixel = 0
-    MinBar.Visible = false; MinBar.ZIndex = 20
-    Corner(MinBar, UDim.new(0,10)); Shadow(MinBar)
-    local MBS = Stroke(MinBar, self.Theme.Accent, 1, 0.6)
+    MinBar.Size = UDim2.new(0, 220, 0, 42)
+    MinBar.Position = UDim2.new(0.5, -110, 0, 10)
+    MinBar.BackgroundColor3 = self.Theme.Section
+    MinBar.BorderSizePixel = 0
+    MinBar.Visible = false
+    MinBar.ZIndex = 20
+    Corner(MinBar, UDim.new(0, 14))
+    Shadow(MinBar, 1)
+    local MBS = Stroke(MinBar, self.Theme.Accent, 1, 0.55)
     table.insert(self.ElementsToTheme, MBS)
 
     local MBStrip = Instance.new("Frame", MinBar)
-    MBStrip.Size = UDim2.new(0,3,0.7,0); MBStrip.Position = UDim2.new(0,0,0.15,0)
-    MBStrip.BackgroundColor3 = self.Theme.Accent; MBStrip.BorderSizePixel = 0
-    Corner(MBStrip, UDim.new(0,4))
+    MBStrip.Size = UDim2.new(0, 3, 0.7, 0)
+    MBStrip.Position = UDim2.new(0, 0, 0.15, 0)
+    MBStrip.BorderSizePixel = 0
+    AccentGradient(MBStrip, 0)
+    Corner(MBStrip, UDim.new(0, 4))
     table.insert(self.ElementsToTheme, MBStrip)
 
     local MBLabel = Instance.new("TextLabel", MinBar)
-    MBLabel.Text = title:upper(); MBLabel.Size = UDim2.new(1,-72,1,0); MBLabel.Position = UDim2.new(0,14,0,0)
-    MBLabel.TextColor3 = self.Theme.Text; MBLabel.Font = Enum.Font.GothamBold; MBLabel.TextSize = 12
-    MBLabel.TextXAlignment = Enum.TextXAlignment.Left; MBLabel.BackgroundTransparency = 1; MBLabel.ZIndex = 21
+    MBLabel.Text = title:upper()
+    MBLabel.Size = UDim2.new(1, -78, 1, 0)
+    MBLabel.Position = UDim2.new(0, 16, 0, 0)
+    MBLabel.TextColor3 = self.Theme.Text
+    MBLabel.Font = self.Theme.FontBold
+    MBLabel.TextSize = 12
+    MBLabel.TextXAlignment = Enum.TextXAlignment.Left
+    MBLabel.BackgroundTransparency = 1
+    MBLabel.ZIndex = 21
 
     local MBRestore = Instance.new("TextButton", MinBar)
-    MBRestore.Size = UDim2.new(0,28,0,28); MBRestore.Position = UDim2.new(1,-34,0.5,-14)
-    MBRestore.BackgroundColor3 = self.Theme.Accent; MBRestore.Text = "▲"
-    MBRestore.TextColor3 = Color3.fromRGB(255,255,255); MBRestore.Font = Enum.Font.GothamBold
-    MBRestore.TextSize = 10; MBRestore.BorderSizePixel = 0; MBRestore.ZIndex = 22
-    Corner(MBRestore, UDim.new(0,6))
+    MBRestore.Size = UDim2.new(0, 30, 0, 30)
+    MBRestore.Position = UDim2.new(1, -36, 0.5, -15)
+    MBRestore.BackgroundColor3 = self.Theme.Accent
+    MBRestore.Text = "▲"
+    MBRestore.AutoButtonColor = false
+    MBRestore.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MBRestore.Font = self.Theme.FontBold
+    MBRestore.TextSize = 11
+    MBRestore.BorderSizePixel = 0
+    MBRestore.ZIndex = 22
+    Corner(MBRestore, UDim.new(0, 8))
+    Ripple(MBRestore, Color3.new(1,1,1))
     table.insert(self.ElementsToTheme, MBRestore)
 
     local function SetMin(v)
         if v then
-            Tween(Main,{Size=UDim2.new(0,W,0,0)},0.3)
-            task.delay(0.3,function()
-                Main.Visible=false; Main.Size=UDim2.new(0,W,0,H)
-                MinBar.Visible=true; MinBar.Position=UDim2.new(0.5,-105,0,-40)
-                Tween(MinBar,{Position=UDim2.new(0.5,-105,0,10)},0.35)
+            Tween(Main, {Size = UDim2.new(0, W, 0, 0), BackgroundTransparency = 0.3}, 0.3)
+            task.delay(0.3, function()
+                Main.Visible = false
+                Main.Size = UDim2.new(0, W, 0, H)
+                Main.BackgroundTransparency = 0
+                MinBar.Visible = true
+                MinBar.Position = UDim2.new(0.5, -110, 0, -46)
+                Tween(MinBar, {Position = UDim2.new(0.5, -110, 0, 10)}, 0.4, Enum.EasingStyle.Back)
             end)
         else
-            MinBar.Visible=false; Main.Visible=true
-            Main.Size=UDim2.new(0,W,0,0)
-            Tween(Main,{Size=UDim2.new(0,W,0,H)},0.35)
+            MinBar.Visible = false
+            Main.Visible = true
+            Main.Size = UDim2.new(0, W, 0, 0)
+            Tween(Main, {Size = UDim2.new(0, W, 0, H)}, 0.4, Enum.EasingStyle.Back)
         end
     end
     MinBtn.MouseButton1Click:Connect(function() SetMin(true) end)
     MBRestore.MouseButton1Click:Connect(function() SetMin(false) end)
 
-    -- MinBar drag (รองรับมือถือ)
-    local bDrag,bDragStart,bStartPos
+    -- MinBar drag (mouse + touch)
+    local bDrag, bDragStart, bStartPos
     MinBar.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1
-        or i.UserInputType==Enum.UserInputType.Touch then
-            bDrag=true; bDragStart=i.Position; bStartPos=MinBar.Position
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            bDrag = true; bDragStart = i.Position; bStartPos = MinBar.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(i)
-        if bDrag and (i.UserInputType==Enum.UserInputType.MouseMovement
-        or i.UserInputType==Enum.UserInputType.Touch) then
-            local d=i.Position-bDragStart
-            MinBar.Position=UDim2.new(bStartPos.X.Scale,bStartPos.X.Offset+d.X,bStartPos.Y.Scale,bStartPos.Y.Offset+d.Y)
+        if bDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            local d = i.Position - bDragStart
+            MinBar.Position = UDim2.new(bStartPos.X.Scale, bStartPos.X.Offset + d.X, bStartPos.Y.Scale, bStartPos.Y.Offset + d.Y)
         end
     end)
     UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1
-        or i.UserInputType==Enum.UserInputType.Touch then bDrag=false end
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then bDrag = false end
     end)
 
     local Div = Instance.new("Frame", Main)
-    Div.Size = UDim2.new(1,-20,0,1); Div.Position = UDim2.new(0,10,0,50)
-    Div.BackgroundColor3 = self.Theme.Border; Div.BorderSizePixel = 0
+    Div.Size = UDim2.new(1, -24, 0, 1)
+    Div.Position = UDim2.new(0, 12, 0, 54)
+    Div.BackgroundColor3 = self.Theme.Border
+    Div.BorderSizePixel = 0
+    Div.BackgroundTransparency = 0.3
 
-    -- Profile
+    -- Profile card
     local PF = Instance.new("Frame", Main)
-    PF.Size = UDim2.new(0,155,0,44); PF.Position = UDim2.new(0,8,1,-52)
-    PF.BackgroundColor3 = self.Theme.Section; PF.BackgroundTransparency = 0.3; PF.BorderSizePixel = 0
-    Corner(PF, UDim.new(0,10))
+    PF.Size = UDim2.new(0, 160, 0, 48)
+    PF.Position = UDim2.new(0, 10, 1, -56)
+    PF.BackgroundColor3 = self.Theme.Section
+    PF.BackgroundTransparency = 0.15
+    PF.BorderSizePixel = 0
+    Corner(PF, UDim.new(0, 12))
+    Stroke(PF, self.Theme.Border, 1, 0.4)
 
     local Av = Instance.new("ImageLabel", PF)
-    Av.Size = UDim2.new(0,32,0,32); Av.Position = UDim2.new(0,6,0.5,-16)
+    Av.Size = UDim2.new(0, 34, 0, 34)
+    Av.Position = UDim2.new(0, 7, 0.5, -17)
     Av.BackgroundColor3 = self.Theme.Border
     pcall(function()
-        Av.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId,
-            Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+        Av.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
     end)
-    Corner(Av, UDim.new(1,0))
+    Corner(Av, UDim.new(1, 0))
+    Stroke(Av, self.Theme.Accent, 2, 0.3)
 
     local PN = Instance.new("TextLabel", PF)
-    PN.Text = LocalPlayer.DisplayName; PN.Size = UDim2.new(1,-44,0,18); PN.Position = UDim2.new(0,42,0,6)
-    PN.TextColor3 = self.Theme.Text; PN.Font = Enum.Font.GothamBold; PN.TextSize = 11
-    PN.TextXAlignment = Enum.TextXAlignment.Left; PN.BackgroundTransparency = 1
+    PN.Text = LocalPlayer.DisplayName
+    PN.Size = UDim2.new(1, -48, 0, 18)
+    PN.Position = UDim2.new(0, 46, 0, 7)
+    PN.TextColor3 = self.Theme.Text
+    PN.Font = self.Theme.FontBold
+    PN.TextSize = 11
+    PN.TextXAlignment = Enum.TextXAlignment.Left
+    PN.BackgroundTransparency = 1
+    PN.TextTruncate = Enum.TextTruncate.AtEnd
+
+    local StatusDot = Instance.new("Frame", PF)
+    StatusDot.Size = UDim2.new(0, 6, 0, 6)
+    StatusDot.Position = UDim2.new(0, 46, 0, 29)
+    StatusDot.BackgroundColor3 = self.Theme.Success
+    StatusDot.BorderSizePixel = 0
+    Corner(StatusDot, UDim.new(1, 0))
+    Pulse(StatusDot, "BackgroundTransparency", 0, 0.5, 0.7)
 
     local PS = Instance.new("TextLabel", PF)
-    PS.Text = "● USER"; PS.Size = UDim2.new(1,-44,0,14); PS.Position = UDim2.new(0,42,0,24)
-    PS.TextColor3 = self.Theme.Accent; PS.Font = Enum.Font.Gotham; PS.TextSize = 9
-    PS.TextXAlignment = Enum.TextXAlignment.Left; PS.BackgroundTransparency = 1
-    table.insert(self.ElementsToTheme, PS)
+    PS.Text = "ONLINE"
+    PS.Size = UDim2.new(1, -60, 0, 14)
+    PS.Position = UDim2.new(0, 58, 0, 26)
+    PS.TextColor3 = self.Theme.SubText
+    PS.Font = self.Theme.Font
+    PS.TextSize = 9
+    PS.TextXAlignment = Enum.TextXAlignment.Left
+    PS.BackgroundTransparency = 1
 
     -- Sidebar
     local SB = Instance.new("Frame", Main)
-    SB.Size = UDim2.new(0,152,1,-105); SB.Position = UDim2.new(0,10,0,58)
-    SB.BackgroundColor3 = self.Theme.Section; SB.BackgroundTransparency = 0.6; SB.BorderSizePixel = 0
-    Corner(SB, UDim.new(0,10))
+    SB.Size = UDim2.new(0, 158, 1, -114)
+    SB.Position = UDim2.new(0, 10, 0, 62)
+    SB.BackgroundColor3 = self.Theme.Section
+    SB.BackgroundTransparency = 0.5
+    SB.BorderSizePixel = 0
+    Corner(SB, UDim.new(0, 12))
+    Stroke(SB, self.Theme.Border, 1, 0.5)
 
     local TabHolder = Instance.new("ScrollingFrame", SB)
-    TabHolder.Size = UDim2.new(1,0,1,-10); TabHolder.Position = UDim2.new(0,0,0,8)
-    TabHolder.BackgroundTransparency = 1; TabHolder.ScrollBarThickness = 0; TabHolder.BorderSizePixel = 0
+    TabHolder.Size = UDim2.new(1, 0, 1, -10)
+    TabHolder.Position = UDim2.new(0, 0, 0, 8)
+    TabHolder.BackgroundTransparency = 1
+    TabHolder.ScrollBarThickness = 0
+    TabHolder.BorderSizePixel = 0
+    TabHolder.CanvasSize = UDim2.new(0,0,0,0)
+    TabHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
     local THL = Instance.new("UIListLayout", TabHolder)
-    THL.Padding = UDim.new(0,4); THL.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    Instance.new("UIPadding", TabHolder).PaddingLeft = UDim.new(0,5)
+    THL.Padding = UDim.new(0, 5)
+    THL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    Instance.new("UIPadding", TabHolder).PaddingLeft = UDim.new(0, 6)
 
     local PageHolder = Instance.new("Frame", Main)
-    PageHolder.Size = UDim2.new(1,-182,1,-115); PageHolder.Position = UDim2.new(0,170,0,58)
+    PageHolder.Size = UDim2.new(1, -190, 1, -124)
+    PageHolder.Position = UDim2.new(0, 178, 0, 62)
     PageHolder.BackgroundTransparency = 1
 
-    -- Header drag (รองรับมือถือ)
-    local drag,dragStart,dragPos
+    -- Header drag (mouse + touch)
+    local drag, dragStart, dragPos
     Header.InputBegan:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1
-        or i.UserInputType==Enum.UserInputType.Touch then
-            drag=true; dragStart=i.Position; dragPos=Main.Position
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            drag = true; dragStart = i.Position; dragPos = Main.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(i)
-        if drag and (i.UserInputType==Enum.UserInputType.MouseMovement
-        or i.UserInputType==Enum.UserInputType.Touch) then
-            local d=i.Position-dragStart
-            Main.Position=UDim2.new(dragPos.X.Scale,dragPos.X.Offset+d.X,dragPos.Y.Scale,dragPos.Y.Offset+d.Y)
+        if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            local d = i.Position - dragStart
+            Main.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + d.X, dragPos.Y.Scale, dragPos.Y.Offset + d.Y)
         end
     end)
     UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType==Enum.UserInputType.MouseButton1
-        or i.UserInputType==Enum.UserInputType.Touch then drag=false end
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end
     end)
 
     UserInputService.InputBegan:Connect(function(input, gpe)
-        if not gpe and input.KeyCode==self.Keybind then
-            self.IsOpen=not self.IsOpen; SG.Enabled=self.IsOpen
+        if not gpe and input.KeyCode == self.Keybind then
+            self.IsOpen = not self.IsOpen
+            SG.Enabled = self.IsOpen
         end
     end)
 
@@ -530,245 +795,427 @@ function Library:CreateWindow(title)
         icon = icon or "◈"
 
         local TB = Instance.new("TextButton", TabHolder)
-        TB.Size = UDim2.new(1,-8,0,34); TB.BackgroundColor3 = Library.Theme.Section
-        TB.BackgroundTransparency = 1; TB.Text = ""; TB.AutoButtonColor = false; TB.BorderSizePixel = 0
-        Corner(TB, UDim.new(0,8))
+        TB.Size = UDim2.new(1, -10, 0, 38)
+        TB.BackgroundColor3 = Library.Theme.Accent
+        TB.BackgroundTransparency = 1
+        TB.Text = ""
+        TB.AutoButtonColor = false
+        TB.BorderSizePixel = 0
+        Corner(TB, UDim.new(0, 10))
+        Ripple(TB, Library.Theme.Accent)
 
         local TInd = Instance.new("Frame", TB)
-        TInd.Size = UDim2.new(0,3,0.6,0); TInd.Position = UDim2.new(0,0,0.2,0)
-        TInd.BackgroundColor3 = Library.Theme.Accent; TInd.BackgroundTransparency = 1; TInd.BorderSizePixel = 0
-        Corner(TInd, UDim.new(0,4))
-        table.insert(Library.ElementsToTheme, TInd)
+        TInd.Size = UDim2.new(0, 3, 0.6, 0)
+        TInd.Position = UDim2.new(0, 0, 0.2, 0)
+        TInd.BackgroundTransparency = 1
+        TInd.BorderSizePixel = 0
+        AccentGradient(TInd, 0)
+        Corner(TInd, UDim.new(0, 4))
 
-        local TIco = Instance.new("TextLabel", TB)
-        TIco.Text = icon; TIco.Size = UDim2.new(0,22,1,0); TIco.Position = UDim2.new(0,10,0,0)
-        TIco.TextColor3 = Library.Theme.SubText; TIco.Font = Enum.Font.GothamBold
-        TIco.TextSize = 13; TIco.BackgroundTransparency = 1
+        local TIcoBG = Instance.new("Frame", TB)
+        TIcoBG.Size = UDim2.new(0, 26, 0, 26)
+        TIcoBG.Position = UDim2.new(0, 8, 0.5, -13)
+        TIcoBG.BackgroundColor3 = Library.Theme.Accent
+        TIcoBG.BackgroundTransparency = 1
+        TIcoBG.BorderSizePixel = 0
+        Corner(TIcoBG, UDim.new(0, 8))
+
+        local TIco = Instance.new("TextLabel", TIcoBG)
+        TIco.Text = icon
+        TIco.Size = UDim2.new(1, 0, 1, 0)
+        TIco.TextColor3 = Library.Theme.SubText
+        TIco.Font = Library.Theme.FontBold
+        TIco.TextSize = 13
+        TIco.BackgroundTransparency = 1
 
         local TLbl = Instance.new("TextLabel", TB)
-        TLbl.Text = name; TLbl.Size = UDim2.new(1,-36,1,0); TLbl.Position = UDim2.new(0,34,0,0)
-        TLbl.TextColor3 = Library.Theme.SubText; TLbl.Font = Enum.Font.GothamMedium
-        TLbl.TextSize = 12; TLbl.TextXAlignment = Enum.TextXAlignment.Left; TLbl.BackgroundTransparency = 1
+        TLbl.Text = name
+        TLbl.Size = UDim2.new(1, -44, 1, 0)
+        TLbl.Position = UDim2.new(0, 40, 0, 0)
+        TLbl.TextColor3 = Library.Theme.SubText
+        TLbl.Font = Library.Theme.FontBold
+        TLbl.TextSize = 12
+        TLbl.TextXAlignment = Enum.TextXAlignment.Left
+        TLbl.BackgroundTransparency = 1
 
         local Page = Instance.new("CanvasGroup", PageHolder)
-        Page.Size = UDim2.new(1,0,1,0); Page.Visible = false; Page.GroupTransparency = 1
-        Page.BackgroundTransparency = 1; Page.BorderSizePixel = 0
+        Page.Size = UDim2.new(1, 0, 1, 0)
+        Page.Visible = false
+        Page.GroupTransparency = 1
+        Page.BackgroundTransparency = 1
+        Page.BorderSizePixel = 0
 
         local PS2 = Instance.new("ScrollingFrame", Page)
-        PS2.Size = UDim2.new(1,0,1,0); PS2.BackgroundTransparency = 1
-        PS2.ScrollBarThickness = 2; PS2.ScrollBarImageColor3 = Library.Theme.Accent; PS2.BorderSizePixel = 0
-        local PSL = Instance.new("UIListLayout", PS2); PSL.Padding = UDim.new(0,6)
-        Instance.new("UIPadding", PS2).PaddingTop = UDim.new(0,4)
+        PS2.Size = UDim2.new(1, 0, 1, 0)
+        PS2.BackgroundTransparency = 1
+        PS2.ScrollBarThickness = 3
+        PS2.ScrollBarImageColor3 = Library.Theme.Accent
+        PS2.BorderSizePixel = 0
+        PS2.CanvasSize = UDim2.new(0,0,0,0)
+        PS2.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        local PSL = Instance.new("UIListLayout", PS2)
+        PSL.Padding = UDim.new(0, 8)
+        Instance.new("UIPadding", PS2).PaddingTop = UDim.new(0, 4)
 
         local function SetActive(on)
             if on then
-                Tween(TB,{BackgroundTransparency=0.7},0.2); Tween(TInd,{BackgroundTransparency=0},0.2)
-                Tween(TIco,{TextColor3=Library.Theme.Accent},0.2); Tween(TLbl,{TextColor3=Library.Theme.Text},0.2)
+                Tween(TB, {BackgroundTransparency = 0.85}, 0.2)
+                Tween(TInd, {BackgroundTransparency = 0}, 0.2)
+                Tween(TIcoBG, {BackgroundTransparency = 0.75}, 0.2)
+                Tween(TIco, {TextColor3 = Library.Theme.Accent}, 0.2)
+                Tween(TLbl, {TextColor3 = Library.Theme.Text}, 0.2)
             else
-                Tween(TB,{BackgroundTransparency=1},0.2); Tween(TInd,{BackgroundTransparency=1},0.2)
-                Tween(TIco,{TextColor3=Library.Theme.SubText},0.2); Tween(TLbl,{TextColor3=Library.Theme.SubText},0.2)
+                Tween(TB, {BackgroundTransparency = 1}, 0.2)
+                Tween(TInd, {BackgroundTransparency = 1}, 0.2)
+                Tween(TIcoBG, {BackgroundTransparency = 1}, 0.2)
+                Tween(TIco, {TextColor3 = Library.Theme.SubText}, 0.2)
+                Tween(TLbl, {TextColor3 = Library.Theme.SubText}, 0.2)
             end
         end
 
         TB.MouseButton1Click:Connect(function()
-            for _,v in pairs(TabHolder:GetChildren()) do
+            for _, v in pairs(TabHolder:GetChildren()) do
                 if v:IsA("TextButton") then
-                    Tween(v,{BackgroundTransparency=1},0.2)
-                    local ind=v:FindFirstChildWhichIsA("Frame")
-                    if ind then Tween(ind,{BackgroundTransparency=1},0.2) end
-                    for _,l in pairs(v:GetChildren()) do
-                        if l:IsA("TextLabel") then Tween(l,{TextColor3=Library.Theme.SubText},0.2) end
+                    Tween(v, {BackgroundTransparency = 1}, 0.2)
+                    local ind = v:FindFirstChildWhichIsA("Frame")
+                    if ind then Tween(ind, {BackgroundTransparency = 1}, 0.2) end
+                    for _, l in pairs(v:GetDescendants()) do
+                        if l:IsA("TextLabel") then Tween(l, {TextColor3 = Library.Theme.SubText}, 0.2) end
+                        if l:IsA("Frame") and l.Name ~= "_Shadow" and l.Name ~= "_Glow" then Tween(l, {BackgroundTransparency = 1}, 0.2) end
                     end
                 end
             end
-            for _,v in pairs(PageHolder:GetChildren()) do
-                if v:IsA("CanvasGroup") then v.Visible=false; v.GroupTransparency=1 end
+            for _, v in pairs(PageHolder:GetChildren()) do
+                if v:IsA("CanvasGroup") then v.Visible = false; v.GroupTransparency = 1 end
             end
-            SetActive(true); Page.Visible=true; Tween(Page,{GroupTransparency=0},0.3)
+            SetActive(true)
+            Page.Visible = true
+            Tween(Page, {GroupTransparency = 0}, 0.3)
         end)
 
         if not Library.CurrentTab then
-            Library.CurrentTab=TB; SetActive(true); Page.Visible=true; Page.GroupTransparency=0
+            Library.CurrentTab = TB
+            SetActive(true)
+            Page.Visible = true
+            Page.GroupTransparency = 0
         end
 
         local function Base(h)
-            local f=Instance.new("Frame",PS2)
-            f.Size=UDim2.new(1,-8,0,h); f.BackgroundColor3=Library.Theme.Section; f.BorderSizePixel=0
-            Corner(f, UDim.new(0,8))
-            local fs=Stroke(f, Library.Theme.Border, 1, 0.5)
-            table.insert(Library.ElementsToTheme, fs)
+            local f = Instance.new("Frame", PS2)
+            f.Size = UDim2.new(1, -8, 0, h)
+            f.BackgroundColor3 = Library.Theme.Section
+            f.BackgroundTransparency = 0.15
+            f.BorderSizePixel = 0
+            f.ClipsDescendants = true
+            Corner(f, UDim.new(0, 10))
+            Stroke(f, Library.Theme.Border, 1, 0.5)
             return f
         end
 
-        local function Lbl(parent,text,x,y,w,h2)
-            local L=Instance.new("TextLabel",parent)
-            L.Text=text; L.Size=UDim2.new(w or 0.7,0,0,h2 or 28)
-            L.Position=UDim2.new(0,x or 14,0,y or 0)
-            L.TextColor3=Library.Theme.Text; L.BackgroundTransparency=1
-            L.TextXAlignment=Enum.TextXAlignment.Left
-            L.Font=Enum.Font.GothamMedium; L.TextSize=12
+        local function Lbl(parent, text, x, y, w, h2)
+            local L = Instance.new("TextLabel", parent)
+            L.Text = text
+            L.Size = UDim2.new(w or 0.7, 0, 0, h2 or 30)
+            L.Position = UDim2.new(0, x or 14, 0, y or 0)
+            L.TextColor3 = Library.Theme.Text
+            L.BackgroundTransparency = 1
+            L.TextXAlignment = Enum.TextXAlignment.Left
+            L.Font = Library.Theme.Font
+            L.TextSize = 12
             return L
         end
 
         local Elements = {}
 
         function Elements:AddSection(text)
-            local F=Instance.new("Frame",PS2)
-            F.Size=UDim2.new(1,-8,0,22); F.BackgroundTransparency=1
-            local L=Instance.new("TextLabel",F)
-            L.Text=("── %s ──"):format(text:upper())
-            L.Size=UDim2.new(1,0,1,0); L.BackgroundTransparency=1
-            L.TextColor3=Library.Theme.Accent; L.Font=Enum.Font.GothamBold
-            L.TextSize=10; L.TextXAlignment=Enum.TextXAlignment.Left
-            table.insert(Library.ElementsToTheme,L)
+            local F = Instance.new("Frame", PS2)
+            F.Size = UDim2.new(1, -8, 0, 26)
+            F.BackgroundTransparency = 1
+
+            local Dot = Instance.new("Frame", F)
+            Dot.Size = UDim2.new(0, 5, 0, 5)
+            Dot.Position = UDim2.new(0, 2, 0.5, -2)
+            Dot.BorderSizePixel = 0
+            Dot.BackgroundColor3 = Library.Theme.Accent
+            Corner(Dot, UDim.new(1, 0))
+            table.insert(Library.ElementsToTheme, Dot)
+
+            local L = Instance.new("TextLabel", F)
+            L.Text = text:upper()
+            L.Size = UDim2.new(1, -16, 1, 0)
+            L.Position = UDim2.new(0, 14, 0, 0)
+            L.BackgroundTransparency = 1
+            L.TextColor3 = Library.Theme.Accent
+            L.Font = Library.Theme.FontBold
+            L.TextSize = 10
+            L.TextXAlignment = Enum.TextXAlignment.Left
+            table.insert(Library.ElementsToTheme, L)
+
+            local Line = Instance.new("Frame", F)
+            Line.Size = UDim2.new(1, -16 - L.TextBounds.X - 10, 0, 1)
+            Line.AnchorPoint = Vector2.new(1, 0.5)
+            Line.Position = UDim2.new(1, 0, 0.5, 0)
+            Line.BackgroundColor3 = Library.Theme.Border
+            Line.BorderSizePixel = 0
         end
 
         function Elements:AddButton(text, callback)
-            local F=Base(38)
-            local Btn=Instance.new("TextButton",F)
-            Btn.Size=UDim2.new(1,0,1,0); Btn.BackgroundTransparency=1; Btn.Text=""; Btn.AutoButtonColor=false
-            local Ico=Instance.new("TextLabel",Btn)
-            Ico.Text="▷"; Ico.Size=UDim2.new(0,20,1,0); Ico.Position=UDim2.new(0,10,0,0)
-            Ico.TextColor3=Library.Theme.Accent; Ico.Font=Enum.Font.GothamBold
-            Ico.TextSize=12; Ico.BackgroundTransparency=1
-            table.insert(Library.ElementsToTheme,Ico)
-            Lbl(Btn,text,32,0)
-            Btn.MouseEnter:Connect(function() Tween(F,{BackgroundColor3=Library.Theme.SectionHov}) end)
-            Btn.MouseLeave:Connect(function() Tween(F,{BackgroundColor3=Library.Theme.Section}) end)
+            local F = Base(40)
+            local Btn = Instance.new("TextButton", F)
+            Btn.Size = UDim2.new(1, 0, 1, 0)
+            Btn.BackgroundTransparency = 1
+            Btn.Text = ""
+            Btn.AutoButtonColor = false
+            Ripple(Btn, Library.Theme.Accent)
+
+            local Ico = Instance.new("TextLabel", Btn)
+            Ico.Text = "▷"
+            Ico.Size = UDim2.new(0, 22, 1, 0)
+            Ico.Position = UDim2.new(0, 12, 0, 0)
+            Ico.TextColor3 = Library.Theme.Accent
+            Ico.Font = Library.Theme.FontBold
+            Ico.TextSize = 12
+            Ico.BackgroundTransparency = 1
+            table.insert(Library.ElementsToTheme, Ico)
+            Lbl(Btn, text, 34, 0)
+
+            Btn.MouseEnter:Connect(function()
+                Tween(F, {BackgroundColor3 = Library.Theme.SectionHov, BackgroundTransparency = 0}, 0.18)
+                Tween(Ico, {Position = UDim2.new(0, 16, 0, 0)}, 0.18)
+            end)
+            Btn.MouseLeave:Connect(function()
+                Tween(F, {BackgroundColor3 = Library.Theme.Section, BackgroundTransparency = 0.15}, 0.18)
+                Tween(Ico, {Position = UDim2.new(0, 12, 0, 0)}, 0.18)
+            end)
             Btn.MouseButton1Click:Connect(function()
-                Tween(F,{BackgroundColor3=Library.Theme.Accent},0.1)
-                task.delay(0.12,function() Tween(F,{BackgroundColor3=Library.Theme.Section}) end)
                 callback()
             end)
         end
 
         function Elements:AddToggle(text, default, callback)
-            local F=Base(40); Lbl(F,text,14,0,0.65,40)
-            local Box=Instance.new("Frame",F)
-            Box.Size=UDim2.new(0,40,0,22); Box.Position=UDim2.new(1,-50,0.5,-11)
-            Box.BackgroundColor3=default and Library.Theme.Accent or Color3.fromRGB(45,45,55)
-            Box.BorderSizePixel=0; Corner(Box,UDim.new(1,0))
-            table.insert(Library.ElementsToTheme,Box)
-            local Dot2=Instance.new("Frame",Box)
-            Dot2.Size=UDim2.new(0,16,0,16)
-            Dot2.Position=default and UDim2.new(1,-19,0.5,-8) or UDim2.new(0,3,0.5,-8)
-            Dot2.BackgroundColor3=Color3.fromRGB(255,255,255); Dot2.BorderSizePixel=0
-            Corner(Dot2,UDim.new(1,0))
-            local state=default
-            local TB2=Instance.new("TextButton",F)
-            TB2.Size=UDim2.new(1,0,1,0); TB2.BackgroundTransparency=1; TB2.Text=""
+            local F = Base(42)
+            Lbl(F, text, 14, 0, 0.6, 42)
+
+            local Box = Instance.new("Frame", F)
+            Box.Size = UDim2.new(0, 42, 0, 24)
+            Box.Position = UDim2.new(1, -54, 0.5, -12)
+            Box.BackgroundColor3 = default and Library.Theme.Accent or Color3.fromRGB(40, 40, 52)
+            Box.BorderSizePixel = 0
+            Corner(Box, UDim.new(1, 0))
+            table.insert(Library.ElementsToTheme, Box)
+
+            local Dot2 = Instance.new("Frame", Box)
+            Dot2.Size = UDim2.new(0, 18, 0, 18)
+            Dot2.Position = default and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+            Dot2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Dot2.BorderSizePixel = 0
+            Corner(Dot2, UDim.new(1, 0))
+
+            local state = default
+            local TB2 = Instance.new("TextButton", F)
+            TB2.Size = UDim2.new(1, 0, 1, 0)
+            TB2.BackgroundTransparency = 1
+            TB2.Text = ""
             TB2.MouseButton1Click:Connect(function()
-                state=not state
-                Tween(Box,{BackgroundColor3=state and Library.Theme.Accent or Color3.fromRGB(45,45,55)})
-                Tween(Dot2,{Position=state and UDim2.new(1,-19,0.5,-8) or UDim2.new(0,3,0.5,-8)})
+                state = not state
+                Tween(Box, {BackgroundColor3 = state and Library.Theme.Accent or Color3.fromRGB(40, 40, 52)}, 0.2)
+                Tween(Dot2, {Position = state and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)}, 0.2, Enum.EasingStyle.Back)
                 callback(state)
             end)
         end
 
-        -- ══════════════════════════════════
-        --  AddSlider — แก้รองรับมือถือ
-        -- ══════════════════════════════════
         function Elements:AddSlider(text, min, max, default, callback)
-            local F=Base(60)
-            local SLbl=Lbl(F,text..":  "..default,14,4)
+            local F = Base(64)
+            local SLbl = Lbl(F, text, 14, 6, 0.6)
 
-            local Track=Instance.new("Frame",F)
-            Track.Size=UDim2.new(1,-28,0,6)
-            Track.Position=UDim2.new(0,14,0,36)
-            Track.BackgroundColor3=Color3.fromRGB(35,35,45)
-            Track.BorderSizePixel=0
-            Corner(Track,UDim.new(0,3))
+            local ValBubble = Instance.new("Frame", F)
+            ValBubble.Size = UDim2.new(0, 44, 0, 20)
+            ValBubble.AnchorPoint = Vector2.new(1, 0)
+            ValBubble.Position = UDim2.new(1, -12, 0, 6)
+            ValBubble.BackgroundColor3 = Library.Theme.Accent
+            ValBubble.BackgroundTransparency = 0.82
+            ValBubble.BorderSizePixel = 0
+            Corner(ValBubble, UDim.new(0, 6))
+            local ValLbl = Instance.new("TextLabel", ValBubble)
+            ValLbl.Size = UDim2.new(1, 0, 1, 0)
+            ValLbl.BackgroundTransparency = 1
+            ValLbl.Text = tostring(default)
+            ValLbl.TextColor3 = Library.Theme.Accent
+            ValLbl.Font = Library.Theme.FontBold
+            ValLbl.TextSize = 11
 
-            local Fill=Instance.new("Frame",Track)
-            Fill.Size=UDim2.new((default-min)/(max-min),0,1,0)
-            Fill.BackgroundColor3=Library.Theme.Accent
-            Fill.BorderSizePixel=0
-            Corner(Fill,UDim.new(0,3))
-            table.insert(Library.ElementsToTheme,Fill)
+            local Track = Instance.new("Frame", F)
+            Track.Size = UDim2.new(1, -28, 0, 6)
+            Track.Position = UDim2.new(0, 14, 0, 40)
+            Track.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+            Track.BorderSizePixel = 0
+            Corner(Track, UDim.new(1, 0))
 
-            -- Knob ใหญ่ขึ้นสำหรับมือถือ
-            local Knob=Instance.new("Frame",Track)
-            Knob.Size=UDim2.new(0,18,0,18)
-            Knob.AnchorPoint=Vector2.new(0.5,0.5)
-            Knob.BackgroundColor3=Color3.fromRGB(255,255,255)
-            Knob.BorderSizePixel=0
-            Knob.Position=UDim2.new((default-min)/(max-min),0,0.5,0)
-            Corner(Knob,UDim.new(1,0))
+            local Fill = Instance.new("Frame", Track)
+            Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+            Fill.BorderSizePixel = 0
+            AccentGradient(Fill, 0)
+            Corner(Fill, UDim.new(1, 0))
 
-            local KnobStroke=Stroke(Knob,Library.Theme.Accent,2,0)
-            table.insert(Library.ElementsToTheme,KnobStroke)
+            local Knob = Instance.new("Frame", Track)
+            Knob.Size = UDim2.new(0, 16, 0, 16)
+            Knob.AnchorPoint = Vector2.new(0.5, 0.5)
+            Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Knob.BorderSizePixel = 0
+            Knob.Position = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
+            Corner(Knob, UDim.new(1, 0))
+            local KnobStroke = Stroke(Knob, Library.Theme.Accent, 2, 0)
+            table.insert(Library.ElementsToTheme, KnobStroke)
 
-            local sliding=false
-
+            local sliding = false
             local function UpdateFromX(x)
-                local p=math.clamp((x - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
-                local val=math.round(min+(max-min)*p)
-                SLbl.Text=text..":  "..val
-                Fill.Size=UDim2.new(p,0,1,0)
-                Knob.Position=UDim2.new(p,0,0.5,0)
+                local p = math.clamp((x - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
+                local val = math.round(min + (max - min) * p)
+                ValLbl.Text = tostring(val)
+                Fill.Size = UDim2.new(p, 0, 1, 0)
+                Knob.Position = UDim2.new(p, 0, 0.5, 0)
                 callback(val)
             end
 
-            -- รับ Touch และ Mouse
             Track.InputBegan:Connect(function(i)
-                if i.UserInputType==Enum.UserInputType.MouseButton1
-                or i.UserInputType==Enum.UserInputType.Touch then
-                    sliding=true
+                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+                    sliding = true
+                    Tween(Knob, {Size = UDim2.new(0, 20, 0, 20)}, 0.15)
                     UpdateFromX(i.Position.X)
                 end
             end)
-
             UserInputService.InputChanged:Connect(function(i)
                 if not sliding then return end
-                if i.UserInputType==Enum.UserInputType.MouseMovement
-                or i.UserInputType==Enum.UserInputType.Touch then
+                if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
                     UpdateFromX(i.Position.X)
                 end
             end)
-
             UserInputService.InputEnded:Connect(function(i)
-                if i.UserInputType==Enum.UserInputType.MouseButton1
-                or i.UserInputType==Enum.UserInputType.Touch then
-                    sliding=false
+                if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+                    if sliding then Tween(Knob, {Size = UDim2.new(0, 16, 0, 16)}, 0.15) end
+                    sliding = false
                 end
             end)
         end
 
         function Elements:AddDropdown(text, list, callback)
-            local cH,oH=40,40+(#list*32)
-            local F=Base(cH); F.ClipsDescendants=true
-            local H2=Instance.new("TextButton",F)
-            H2.Size=UDim2.new(1,0,0,40); H2.BackgroundTransparency=1; H2.Text=""; H2.AutoButtonColor=false
-            Lbl(H2,text,14,0,0.6,40)
-            local Arr=Instance.new("TextLabel",H2)
-            Arr.Text="▼"; Arr.Size=UDim2.new(0,20,0,40); Arr.Position=UDim2.new(1,-28,0,0)
-            Arr.TextColor3=Library.Theme.SubText; Arr.Font=Enum.Font.GothamBold
-            Arr.TextSize=10; Arr.BackgroundTransparency=1
-            local SelL=Instance.new("TextLabel",H2)
-            SelL.Size=UDim2.new(0,80,0,40); SelL.Position=UDim2.new(1,-110,0,0)
-            SelL.Text=list[1] or ""; SelL.TextColor3=Library.Theme.Accent
-            SelL.Font=Enum.Font.Gotham; SelL.TextSize=11; SelL.BackgroundTransparency=1
-            SelL.TextXAlignment=Enum.TextXAlignment.Right
-            table.insert(Library.ElementsToTheme,SelL)
-            local open=false
+            local cH, oH = 42, 42 + (#list * 32) + 6
+            local F = Base(cH)
+            F.ClipsDescendants = true
+
+            local H2 = Instance.new("TextButton", F)
+            H2.Size = UDim2.new(1, 0, 0, 42)
+            H2.BackgroundTransparency = 1
+            H2.Text = ""
+            H2.AutoButtonColor = false
+            Lbl(H2, text, 14, 0, 0.55, 42)
+
+            local Arr = Instance.new("TextLabel", H2)
+            Arr.Text = "▼"
+            Arr.Size = UDim2.new(0, 20, 0, 42)
+            Arr.Position = UDim2.new(1, -30, 0, 0)
+            Arr.TextColor3 = Library.Theme.SubText
+            Arr.Font = Library.Theme.FontBold
+            Arr.TextSize = 10
+            Arr.BackgroundTransparency = 1
+
+            local SelL = Instance.new("TextLabel", H2)
+            SelL.Size = UDim2.new(0, 90, 0, 42)
+            SelL.Position = UDim2.new(1, -122, 0, 0)
+            SelL.Text = list[1] or ""
+            SelL.TextColor3 = Library.Theme.Accent
+            SelL.Font = Library.Theme.FontBold
+            SelL.TextSize = 11
+            SelL.BackgroundTransparency = 1
+            SelL.TextXAlignment = Enum.TextXAlignment.Right
+            table.insert(Library.ElementsToTheme, SelL)
+
+            local open = false
             H2.MouseButton1Click:Connect(function()
-                open=not open
-                Tween(F,{Size=UDim2.new(1,-8,0,open and oH or cH)},0.25)
-                Tween(Arr,{TextColor3=open and Library.Theme.Accent or Library.Theme.SubText},0.2)
+                open = not open
+                Tween(F, {Size = UDim2.new(1, -8, 0, open and oH or cH)}, 0.28)
+                Tween(Arr, {TextColor3 = open and Library.Theme.Accent or Library.Theme.SubText, Rotation = open and 180 or 0}, 0.25)
             end)
-            for i,v in pairs(list) do
-                local iB=Instance.new("TextButton",F)
-                iB.Size=UDim2.new(1,-16,0,28); iB.Position=UDim2.new(0,8,0,40+(i-1)*32+2)
-                iB.BackgroundColor3=Library.Theme.SectionHov; iB.BackgroundTransparency=0.5
-                iB.Text=v; iB.TextColor3=Library.Theme.SubText; iB.Font=Enum.Font.Gotham
-                iB.TextSize=11; iB.BorderSizePixel=0; Corner(iB,UDim.new(0,6))
-                iB.MouseEnter:Connect(function() Tween(iB,{TextColor3=Library.Theme.Text}) end)
-                iB.MouseLeave:Connect(function() Tween(iB,{TextColor3=Library.Theme.SubText}) end)
+
+            for i, v in pairs(list) do
+                local iB = Instance.new("TextButton", F)
+                iB.Size = UDim2.new(1, -16, 0, 28)
+                iB.Position = UDim2.new(0, 8, 0, 42 + (i - 1) * 32 + 4)
+                iB.BackgroundColor3 = Library.Theme.SectionHov
+                iB.BackgroundTransparency = 0.4
+                iB.AutoButtonColor = false
+                iB.Text = ""
+                iB.BorderSizePixel = 0
+                Corner(iB, UDim.new(0, 7))
+                Ripple(iB, Library.Theme.Accent)
+
+                local iL = Instance.new("TextLabel", iB)
+                iL.Text = v
+                iL.Size = UDim2.new(1, -14, 1, 0)
+                iL.Position = UDim2.new(0, 10, 0, 0)
+                iL.BackgroundTransparency = 1
+                iL.TextColor3 = Library.Theme.SubText
+                iL.Font = Library.Theme.Font
+                iL.TextSize = 11
+                iL.TextXAlignment = Enum.TextXAlignment.Left
+
+                iB.MouseEnter:Connect(function() Tween(iL, {TextColor3 = Library.Theme.Text}, 0.15) end)
+                iB.MouseLeave:Connect(function() Tween(iL, {TextColor3 = Library.Theme.SubText}, 0.15) end)
                 iB.MouseButton1Click:Connect(function()
-                    SelL.Text=v; open=false
-                    Tween(F,{Size=UDim2.new(1,-8,0,cH)},0.25); callback(v)
+                    SelL.Text = v
+                    open = false
+                    Tween(F, {Size = UDim2.new(1, -8, 0, cH)}, 0.28)
+                    Tween(Arr, {Rotation = 0}, 0.25)
+                    callback(v)
                 end)
             end
+        end
+
+        function Elements:AddLabel(text)
+            local F = Base(34)
+            local L = Instance.new("TextLabel", F)
+            L.Text = text
+            L.Size = UDim2.new(1, -24, 1, 0)
+            L.Position = UDim2.new(0, 14, 0, 0)
+            L.BackgroundTransparency = 1
+            L.TextColor3 = Library.Theme.SubText
+            L.Font = Library.Theme.Font
+            L.TextSize = 11
+            L.TextXAlignment = Enum.TextXAlignment.Left
+            L.TextWrapped = true
+            return L
+        end
+
+        function Elements:AddInput(text, placeholder, callback)
+            local F = Base(64)
+            Lbl(F, text, 14, 6, 0.7)
+
+            local Box = Instance.new("Frame", F)
+            Box.Size = UDim2.new(1, -28, 0, 30)
+            Box.Position = UDim2.new(0, 14, 0, 28)
+            Box.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
+            Box.BorderSizePixel = 0
+            Corner(Box, UDim.new(0, 8))
+            local BoxStroke = Stroke(Box, Library.Theme.Border, 1, 0.4)
+
+            local TBox = Instance.new("TextBox", Box)
+            TBox.Size = UDim2.new(1, -20, 1, 0)
+            TBox.Position = UDim2.new(0, 10, 0, 0)
+            TBox.BackgroundTransparency = 1
+            TBox.Text = ""
+            TBox.PlaceholderText = placeholder or ""
+            TBox.PlaceholderColor3 = Library.Theme.SubText
+            TBox.TextColor3 = Library.Theme.Text
+            TBox.Font = Library.Theme.Font
+            TBox.TextSize = 12
+            TBox.TextXAlignment = Enum.TextXAlignment.Left
+            TBox.ClearTextOnFocus = false
+
+            TBox.Focused:Connect(function() Tween(BoxStroke, {Color = Library.Theme.Accent, Transparency = 0}, 0.2) end)
+            TBox.FocusLost:Connect(function(enter)
+                Tween(BoxStroke, {Color = Library.Theme.Border, Transparency = 0.4}, 0.2)
+                callback(TBox.Text, enter)
+            end)
         end
 
         return Elements
