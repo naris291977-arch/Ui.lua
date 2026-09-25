@@ -1,4 +1,4 @@
--- [[ NAEI HUB UI LIBRARY - ULTRA ROUNDED WIND UI STYLE ]] --
+-- [[ NAEI HUB UI LIBRARY - ULTRA-PREMIUM WIND UI ]] --
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -7,18 +7,18 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Library = {}
 
--- โทนสี Wind UI (Dark Sleek & Minimalist with Crisp Accents)
+-- โทนสี Wind UI พรีเมียม (Dark Deep Charcoal & Crisp White/Soft Accents)
 Library.Theme = {
-    Background = Color3.fromRGB(13, 13, 18),
-    Surface = Color3.fromRGB(20, 20, 26),
-    Surface2 = Color3.fromRGB(28, 28, 36),
-    SurfaceHover = Color3.fromRGB(38, 38, 48),
-    Border = Color3.fromRGB(45, 45, 58),
-    BorderSubtle = Color3.fromRGB(32, 32, 42),
-    Accent = Color3.fromRGB(255, 255, 255),      -- ขาวพรีเมียม
-    AccentDim = Color3.fromRGB(180, 180, 200),
-    Text = Color3.fromRGB(245, 245, 250),
-    Muted = Color3.fromRGB(130, 130, 145),
+    Background = Color3.fromRGB(12, 12, 16),
+    Surface = Color3.fromRGB(18, 18, 24),
+    Surface2 = Color3.fromRGB(26, 26, 35),
+    SurfaceHover = Color3.fromRGB(36, 36, 48),
+    Border = Color3.fromRGB(50, 50, 65),
+    BorderSubtle = Color3.fromRGB(32, 32, 44),
+    Accent = Color3.fromRGB(255, 255, 255),
+    AccentDim = Color3.fromRGB(160, 160, 180),
+    Text = Color3.fromRGB(250, 250, 255),
+    Muted = Color3.fromRGB(120, 120, 140),
     Success = Color3.fromRGB(46, 213, 115),
     Danger = Color3.fromRGB(255, 71, 87),
     Shadow = Color3.fromRGB(0, 0, 0),
@@ -30,19 +30,18 @@ function Library:SetTheme(newTheme)
     end
     if self._MainScreenGui then
         self._MainScreenGui:Destroy()
-        warn("Theme updated! Please re-initialize.")
     end
 end
 
 local function tween(object, properties, duration)
     pcall(function()
-        TweenService:Create(object, TweenInfo.new(duration or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), properties):Play()
+        TweenService:Create(object, TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), properties):Play()
     end)
 end
 
 local function corner(object, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 14) -- เน้นความโค้งมนสูง (Pill / Rounded shape)
+    c.CornerRadius = UDim.new(0, radius or 16) -- โค้งมนละมุนแบบพรีเมียม
     c.Parent = object
     return c
 end
@@ -51,7 +50,7 @@ local function stroke(object, color, thickness, transparency)
     local s = Instance.new("UIStroke")
     s.Color = color or Library.Theme.BorderSubtle
     s.Thickness = thickness or 1
-    s.Transparency = transparency or 0.25
+    s.Transparency = transparency or 0.3
     s.Parent = object
     return s
 end
@@ -69,13 +68,13 @@ end
 
 function Library:CreateWindow(hubTitleText, subTitleText)
     hubTitleText = hubTitleText or "Wind UI"
-    subTitleText = subTitleText or "Modern Experience"
+    subTitleText = subTitleText or "Next-Gen Experience"
 
-    local old = PlayerGui:FindFirstChild("NaeiRoundedUI")
+    local old = PlayerGui:FindFirstChild("NaeiUltraWindUI")
     if old then pcall(function() old:Destroy() end) end
 
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "NaeiRoundedUI"
+    ScreenGui.Name = "NaeiUltraWindUI"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.Parent = PlayerGui
@@ -98,7 +97,6 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
     -- Notification System
     local NotifHolder = Instance.new("Frame")
-    NotifHolder.Name = "NotificationHolder"
     NotifHolder.Size = UDim2.new(0, 280, 1, 0)
     NotifHolder.Position = UDim2.new(1, -290, 0, 0)
     NotifHolder.BackgroundTransparency = 1
@@ -114,85 +112,81 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     function Library:SendNotification(titleText, descText, duration)
         duration = duration or 3
         local card = Instance.new("Frame")
-        card.Size = UDim2.new(1, 0, 0, 60)
+        card.Size = UDim2.new(1, 0, 0, 64)
         card.BackgroundColor3 = Library.Theme.Surface
         card.BackgroundTransparency = 1
-        card.BorderSizePixel = 0
         card.Parent = NotifHolder
         
-        corner(card, 16)
-        stroke(card, Library.Theme.Border, 1, 0.3)
+        corner(card, 18)
+        stroke(card, Library.Theme.Border, 1, 0.25)
         
         local line = Instance.new("Frame")
         line.Size = UDim2.new(0, 4, 0.5, 0)
         line.Position = UDim2.new(0, 0, 0.25, 0)
         line.BackgroundColor3 = Library.Theme.Accent
-        line.BorderSizePixel = 0
         line.Parent = card
         corner(line, 2)
         
         local t = label(card, titleText, 13, Library.Theme.Text, Enum.Font.GothamBold)
         t.Size = UDim2.new(1, -24, 0, 20)
-        t.Position = UDim2.new(0, 16, 0, 10)
+        t.Position = UDim2.new(0, 16, 0, 11)
         t.TextXAlignment = Enum.TextXAlignment.Left
         
         local d = label(card, descText, 11, Library.Theme.Muted, Enum.Font.Gotham)
         d.Size = UDim2.new(1, -24, 0, 20)
-        d.Position = UDim2.new(0, 16, 0, 30)
+        d.Position = UDim2.new(0, 16, 0, 31)
         d.TextXAlignment = Enum.TextXAlignment.Left
         
         card.Position = UDim2.new(1, 40, 0, 0)
-        tween(card, {BackgroundTransparency = 0.05, Position = UDim2.new(0, 0, 0, 0)}, 0.25)
+        tween(card, {BackgroundTransparency = 0.04, Position = UDim2.new(0, 0, 0, 0)}, 0.3)
         
         task.spawn(function()
             task.wait(duration)
-            tween(card, {BackgroundTransparency = 1, Position = UDim2.new(1, 40, 0, 0)}, 0.25)
-            task.wait(0.25)
+            tween(card, {BackgroundTransparency = 1, Position = UDim2.new(1, 40, 0, 0)}, 0.3)
+            task.wait(0.3)
             card:Destroy()
         end)
     end
 
-    -- Main Container (Ultra Rounded & Soft Shadow)
+    -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 630, 0, 430)
-    MainFrame.Position = UDim2.new(0.5, -315, 0.5, -215)
+    MainFrame.Size = UDim2.new(0, 640, 0, 430)
+    MainFrame.Position = UDim2.new(0.5, -320, 0.5, -215)
     MainFrame.BackgroundColor3 = Library.Theme.Background
-    MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = false
     MainFrame.Parent = ScreenGui
 
+    -- Soft Glow Shadow
     local Shadow = Instance.new("ImageLabel")
     Shadow.Name = "Shadow"
     Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-    Shadow.Position = UDim2.new(0.5, 0, 0.5, 8)
-    Shadow.Size = UDim2.new(1, 50, 1, 50)
+    Shadow.Position = UDim2.new(0.5, 0, 0.5, 10)
+    Shadow.Size = UDim2.new(1, 60, 1, 60)
     Shadow.BackgroundTransparency = 1
     Shadow.Image = "rbxassetid://6014261993"
     Shadow.ImageColor3 = Library.Theme.Shadow
-    Shadow.ImageTransparency = 0.35
+    Shadow.ImageTransparency = 0.3
     Shadow.ScaleType = Enum.ScaleType.Slice
     Shadow.SliceCenter = Rect.new(49, 49, 450, 450)
     Shadow.ZIndex = 0
     Shadow.Parent = MainFrame
     MainFrame.ZIndex = 2
     
-    corner(MainFrame, 20) -- ความโค้งขอบนอกสุดมนสวยงาม
-    stroke(MainFrame, Library.Theme.Border, 1.2, 0.3)
+    corner(MainFrame, 22)
+    stroke(MainFrame, Library.Theme.Border, 1.2, 0.25)
 
     -- TopBar
     local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, 0, 0, 56)
+    TopBar.Size = UDim2.new(1, 0, 0, 58)
     TopBar.BackgroundColor3 = Library.Theme.Surface
-    TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
     TopBar.ZIndex = 4
-    corner(TopBar, 20)
+    corner(TopBar, 22)
 
-    -- ปิดมุมล่าง TopBar ให้เรียบเสมอกัน
     local TopBarFix = Instance.new("Frame")
-    TopBarFix.Size = UDim2.new(1, 0, 0, 14)
-    TopBarFix.Position = UDim2.new(0, 0, 1, -14)
+    TopBarFix.Size = UDim2.new(1, 0, 0, 16)
+    TopBarFix.Position = UDim2.new(0, 0, 1, -16)
     TopBarFix.BackgroundColor3 = Library.Theme.Surface
     TopBarFix.BorderSizePixel = 0
     TopBarFix.Parent = TopBar
@@ -204,13 +198,13 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
     local Subtitle = label(TopBar, subTitleText, 10, Library.Theme.Muted, Enum.Font.Gotham)
     Subtitle.Size = UDim2.new(0, 200, 0, 14)
-    Subtitle.Position = UDim2.new(0, 20, 0, 30)
+    Subtitle.Position = UDim2.new(0, 20, 0, 31)
     Subtitle.TextXAlignment = Enum.TextXAlignment.Left
 
     local function controlButton(text, color, x)
         local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0, 28, 0, 28)
-        b.Position = UDim2.new(1, x, 0.5, -14)
+        b.Size = UDim2.new(0, 30, 0, 30)
+        b.Position = UDim2.new(1, x, 0.5, -15)
         b.BackgroundColor3 = Library.Theme.Surface2
         b.Text = text
         b.TextColor3 = Library.Theme.Text
@@ -225,18 +219,17 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         return b
     end
 
-    local MinimizeBtn = controlButton("−", Library.Theme.Accent, -76)
-    local CloseBtn = controlButton("×", Library.Theme.Danger, -42)
+    local MinimizeBtn = controlButton("−", Library.Theme.Accent, -80)
+    local CloseBtn = controlButton("×", Library.Theme.Danger, -44)
 
-    -- Sidebar Navigation (Floating Pill Style)
+    -- Sidebar Navigation
     local Sidebar = Instance.new("Frame")
-    Sidebar.Size = UDim2.new(0, 156, 1, -72)
-    Sidebar.Position = UDim2.new(0, 12, 0, 62)
+    Sidebar.Size = UDim2.new(0, 160, 1, -74)
+    Sidebar.Position = UDim2.new(0, 12, 0, 64)
     Sidebar.BackgroundColor3 = Library.Theme.Surface
-    Sidebar.BorderSizePixel = 0
     Sidebar.Parent = MainFrame
-    corner(Sidebar, 16)
-    stroke(Sidebar, Library.Theme.BorderSubtle, 1, 0.35)
+    corner(Sidebar, 18)
+    stroke(Sidebar, Library.Theme.BorderSubtle, 1, 0.3)
 
     local TabList = Instance.new("ScrollingFrame")
     TabList.Size = UDim2.new(1, -12, 1, -12)
@@ -253,8 +246,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     TabLayout.Parent = TabList
 
     local ContainerHolder = Instance.new("Frame")
-    ContainerHolder.Size = UDim2.new(1, -180, 1, -72)
-    ContainerHolder.Position = UDim2.new(0, 180, 0, 62)
+    ContainerHolder.Size = UDim2.new(1, -186, 1, -74)
+    ContainerHolder.Position = UDim2.new(0, 184, 0, 64)
     ContainerHolder.BackgroundTransparency = 1
     ContainerHolder.Parent = MainFrame
 
@@ -266,23 +259,22 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     function WindowObj:CreateTab(name, iconChar)
         iconChar = iconChar or "•"
         local tab = Instance.new("TextButton")
-        tab.Size = UDim2.new(1, 0, 0, 40)
+        tab.Size = UDim2.new(1, 0, 0, 42)
         tab.BackgroundColor3 = Library.Theme.Surface
-        tab.BorderSizePixel = 0
         tab.Text = ""
         tab.AutoButtonColor = false
         tab.Parent = TabList
-        corner(tab, 12) -- โค้งมนพิเศษ
+        corner(tab, 12)
 
         local icon = label(tab, iconChar, 13, Library.Theme.Muted, Enum.Font.GothamBold)
-        icon.Size = UDim2.new(0, 30, 1, 0)
+        icon.Size = UDim2.new(0, 32, 1, 0)
         icon.Position = UDim2.new(0, 4, 0, 0)
         icon.TextXAlignment = Enum.TextXAlignment.Center
         icon.TextYAlignment = Enum.TextYAlignment.Center
 
         local title = label(tab, name, 12, Library.Theme.Muted, Enum.Font.GothamMedium)
-        title.Size = UDim2.new(1, -34, 1, 0)
-        title.Position = UDim2.new(0, 34, 0, 0)
+        title.Size = UDim2.new(1, -36, 1, 0)
+        title.Position = UDim2.new(0, 36, 0, 0)
         title.TextXAlignment = Enum.TextXAlignment.Left
         title.TextYAlignment = Enum.TextYAlignment.Center
 
@@ -352,36 +344,35 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
         function TabObj:AddCollapsible(titleText)
             local container = Instance.new("Frame")
-            container.Size = UDim2.new(1, -6, 0, 44)
+            container.Size = UDim2.new(1, -6, 0, 46)
             container.BackgroundColor3 = Library.Theme.Surface
-            container.BorderSizePixel = 0
             container.ClipsDescendants = true
             container.Parent = page
             corner(container, 14)
-            stroke(container, Library.Theme.BorderSubtle, 1, 0.35)
+            stroke(container, Library.Theme.BorderSubtle, 1, 0.3)
 
             local header = Instance.new("TextButton")
-            header.Size = UDim2.new(1, 0, 0, 44)
+            header.Size = UDim2.new(1, 0, 0, 46)
             header.BackgroundTransparency = 1
             header.Text = ""
             header.AutoButtonColor = false
             header.Parent = container
 
             local t = label(header, titleText, 12, Library.Theme.Text, Enum.Font.GothamBold)
-            t.Size = UDim2.new(1, -34, 1, 0)
+            t.Size = UDim2.new(1, -36, 1, 0)
             t.Position = UDim2.new(0, 16, 0, 0)
             t.TextXAlignment = Enum.TextXAlignment.Left
             t.TextYAlignment = Enum.TextYAlignment.Center
 
             local arrow = label(header, "▾", 13, Library.Theme.Muted, Enum.Font.GothamBold)
             arrow.Size = UDim2.new(0, 24, 1, 0)
-            arrow.Position = UDim2.new(1, -30, 0, 0)
+            arrow.Position = UDim2.new(1, -32, 0, 0)
             arrow.TextXAlignment = Enum.TextXAlignment.Center
             arrow.TextYAlignment = Enum.TextYAlignment.Center
 
             local content = Instance.new("Frame")
             content.Size = UDim2.new(1, 0, 0, 0)
-            content.Position = UDim2.new(0, 0, 0, 44)
+            content.Position = UDim2.new(0, 0, 0, 46)
             content.BackgroundTransparency = 1
             content.Parent = container
 
@@ -393,12 +384,12 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             local isOpen = false
             layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                 if isOpen then
-                    tween(container, {Size = UDim2.new(1, -6, 0, 44 + layout.AbsoluteContentSize.Y + 16)}, 0.2)
+                    tween(container, {Size = UDim2.new(1, -6, 0, 46 + layout.AbsoluteContentSize.Y + 16)}, 0.2)
                 end
             end)
             header.MouseButton1Click:Connect(function()
                 isOpen = not isOpen
-                local targetHeight = isOpen and (44 + layout.AbsoluteContentSize.Y + 16) or 44
+                local targetHeight = isOpen and (46 + layout.AbsoluteContentSize.Y + 16) or 46
                 tween(container, {Size = UDim2.new(1, -6, 0, targetHeight)}, 0.25)
                 tween(arrow, {Rotation = isOpen and 180 or 0}, 0.25)
             end)
@@ -407,17 +398,16 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
             function SectionObj:AddButton(text, callback)
                 local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(1, -16, 0, 38)
+                btn.Size = UDim2.new(1, -16, 0, 40)
                 btn.BackgroundColor3 = Library.Theme.Surface2
-                btn.BorderSizePixel = 0
                 btn.Text = ""
                 btn.AutoButtonColor = false
                 btn.Parent = content
                 corner(btn, 12)
-                stroke(btn, Library.Theme.BorderSubtle, 1, 0.35)
+                stroke(btn, Library.Theme.BorderSubtle, 1, 0.3)
 
                 local txt = label(btn, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
-                txt.Size = UDim2.new(1, -24, 1, 0)
+                txt.Size = UDim2.new(1, -28, 1, 0)
                 txt.Position = UDim2.new(0, 14, 0, 0)
                 txt.TextXAlignment = Enum.TextXAlignment.Left
                 txt.TextYAlignment = Enum.TextYAlignment.Center
@@ -431,31 +421,30 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             function SectionObj:AddToggle(text, defaultState, callback)
                 local toggled = defaultState or false
                 local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(1, -16, 0, 38)
+                btn.Size = UDim2.new(1, -16, 0, 40)
                 btn.BackgroundColor3 = Library.Theme.Surface2
-                btn.BorderSizePixel = 0
                 btn.Text = ""
                 btn.AutoButtonColor = false
                 btn.Parent = content
                 corner(btn, 12)
-                stroke(btn, Library.Theme.BorderSubtle, 1, 0.35)
+                stroke(btn, Library.Theme.BorderSubtle, 1, 0.3)
 
                 local txt = label(btn, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
-                txt.Size = UDim2.new(1, -60, 1, 0)
+                txt.Size = UDim2.new(1, -64, 1, 0)
                 txt.Position = UDim2.new(0, 14, 0, 0)
                 txt.TextXAlignment = Enum.TextXAlignment.Left
                 txt.TextYAlignment = Enum.TextYAlignment.Center
 
                 local switchBg = Instance.new("Frame")
-                switchBg.Size = UDim2.new(0, 38, 0, 20)
-                switchBg.Position = UDim2.new(1, -46, 0.5, -10)
+                switchBg.Size = UDim2.new(0, 40, 0, 22)
+                switchBg.Position = UDim2.new(1, -48, 0.5, -11)
                 switchBg.BackgroundColor3 = toggled and Library.Theme.Accent or Library.Theme.SurfaceHover
                 switchBg.Parent = btn
-                corner(switchBg, 10)
+                corner(switchBg, 11)
 
                 local switchDot = Instance.new("Frame")
                 switchDot.Size = UDim2.new(0, 16, 0, 16)
-                switchDot.Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                switchDot.Position = toggled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
                 switchDot.BackgroundColor3 = toggled and Library.Theme.Background or Library.Theme.Text
                 switchDot.Parent = switchBg
                 corner(switchDot, 8)
@@ -464,7 +453,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                     toggled = not toggled
                     tween(switchBg, {BackgroundColor3 = toggled and Library.Theme.Accent or Library.Theme.SurfaceHover}, 0.2)
                     tween(switchDot, {
-                        Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
+                        Position = toggled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8),
                         BackgroundColor3 = toggled and Library.Theme.Background or Library.Theme.Text
                     }, 0.2)
                     if callback then pcall(function() callback(toggled) end) end
@@ -490,14 +479,14 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         minimized = not minimized
         Sidebar.Visible = not minimized
         ContainerHolder.Visible = not minimized
-        local targetSize = minimized and UDim2.new(0, 630, 0, 56) or UDim2.new(0, 630, 0, 430)
+        local targetSize = minimized and UDim2.new(0, 640, 0, 58) or UDim2.new(0, 640, 0, 430)
         tween(MainFrame, {Size = targetSize}, 0.25)
         MinimizeBtn.Text = minimized and "+" or "−"
     end)
 
     CloseBtn.MouseButton1Click:Connect(function()
         Library:SendNotification("System", "UI Closed successfully.", 2)
-        tween(MainFrame, {Size = UDim2.new(0, 630, 0, 0)}, 0.2)
+        tween(MainFrame, {Size = UDim2.new(0, 640, 0, 0)}, 0.2)
         task.wait(0.2)
         ScreenGui:Destroy()
     end)
