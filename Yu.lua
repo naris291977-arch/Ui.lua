@@ -1,26 +1,28 @@
--- [[ NAEI HUB UI LIBRARY - ULTRA-PREMIUM WIND UI WITH TEXTBOX ]] --
+-- [[ NAEI HUB UI LIBRARY - BRIGHT PREMIUM WIND UI WITH GLOW BORDER ]] --
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Library = {}
 
+-- ปรับโทนสีให้สว่าง สะอาดตา และดูโมเดิร์นขึ้น
 Library.Theme = {
-    Background = Color3.fromRGB(12, 12, 16),
-    Surface = Color3.fromRGB(18, 18, 24),
-    Surface2 = Color3.fromRGB(26, 26, 35),
-    SurfaceHover = Color3.fromRGB(36, 36, 48),
-    Border = Color3.fromRGB(50, 50, 65),
-    BorderSubtle = Color3.fromRGB(32, 32, 44),
-    Accent = Color3.fromRGB(255, 255, 255),
-    AccentDim = Color3.fromRGB(160, 160, 180),
-    Text = Color3.fromRGB(250, 250, 255),
-    Muted = Color3.fromRGB(120, 120, 140),
-    Success = Color3.fromRGB(46, 213, 115),
-    Danger = Color3.fromRGB(255, 71, 87),
-    Shadow = Color3.fromRGB(0, 0, 0),
+    Background = Color3.fromRGB(245, 246, 250),
+    Surface = Color3.fromRGB(255, 255, 255),
+    Surface2 = Color3.fromRGB(238, 240, 245),
+    SurfaceHover = Color3.fromRGB(225, 230, 240),
+    Border = Color3.fromRGB(210, 215, 230),
+    BorderSubtle = Color3.fromRGB(220, 225, 235),
+    Accent = Color3.fromRGB(99, 102, 241),      -- สีฟ้าครามพรีเมียม
+    AccentGlow = Color3.fromRGB(129, 140, 248), -- สีสำหรับเส้นวิ่ง
+    Text = Color3.fromRGB(30, 35, 45),
+    Muted = Color3.fromRGB(110, 120, 140),
+    Success = Color3.fromRGB(34, 197, 94),
+    Danger = Color3.fromRGB(239, 68, 68),
+    Shadow = Color3.fromRGB(150, 160, 180),
 }
 
 function Library:SetTheme(newTheme)
@@ -55,7 +57,7 @@ local function stroke(object, color, thickness, transparency)
 end
 
 local function label(parent, text, size, color, font)
-    local l = Instance.new("TextLabel")
+    l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
     l.Text = text
     l.TextColor3 = color or Library.Theme.Text
@@ -117,7 +119,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         card.Parent = NotifHolder
         
         corner(card, 18)
-        stroke(card, Library.Theme.Border, 1, 0.25)
+        stroke(card, Library.Theme.Border, 1, 0.2)
         
         local line = Instance.new("Frame")
         line.Size = UDim2.new(0, 4, 0.5, 0)
@@ -137,7 +139,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         d.TextXAlignment = Enum.TextXAlignment.Left
         
         card.Position = UDim2.new(1, 40, 0, 0)
-        tween(card, {BackgroundTransparency = 0.04, Position = UDim2.new(0, 0, 0, 0)}, 0.3)
+        tween(card, {BackgroundTransparency = 0.05, Position = UDim2.new(0, 0, 0, 0)}, 0.3)
         
         task.spawn(function()
             task.wait(duration)
@@ -147,24 +149,46 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         end)
     end
 
+    -- Main Frame Wrapper (สำหรับใส่เส้นวิ่งเรืองแสงรอบขอบ)
+    local GlowContainer = Instance.new("Frame")
+    GlowContainer.Name = "GlowContainer"
+    GlowContainer.Size = UDim2.new(0, 644, 0, 434)
+    GlowContainer.Position = UDim2.new(0.5, -322, 0.5, -217)
+    GlowContainer.BackgroundTransparency = 1
+    GlowContainer.Parent = ScreenGui
+
+    -- สร้างกรอบเส้นวิ่งเรืองแสงรอบขอบ (Glow Border Effect)
+    local GlowStroke = stroke(GlowContainer, Library.Theme.AccentGlow, 2, 0)
+    corner(GlowContainer, 24)
+
+    -- เอฟเฟกต์ไล่ระดับความโปร่งใสของเส้นขอบให้ดูวิ่งวน
+    task.spawn(function()
+        local t = 0
+        while GlowContainer.Parent do
+            t = t + RunService.RenderStepped:Wait() * 2.5
+            local alpha = (math.sin(t) + 1) / 2 -- สลับความโปร่งใส 0 ถึง 1 นุ่มนวล
+            GlowStroke.Transparency = 0.1 + (alpha * 0.7)
+        end
+    end)
+
     -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 640, 0, 430)
-    MainFrame.Position = UDim2.new(0.5, -320, 0.5, -215)
+    MainFrame.Size = UDim2.new(1, 0, 1, 0)
+    MainFrame.Position = UDim2.new(0, 0, 0, 0)
     MainFrame.BackgroundColor3 = Library.Theme.Background
-    MainFrame.ClipsDescendants = false
-    MainFrame.Parent = ScreenGui
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = GlowContainer
 
     local Shadow = Instance.new("ImageLabel")
     Shadow.Name = "Shadow"
     Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-    Shadow.Position = UDim2.new(0.5, 0, 0.5, 10)
-    Shadow.Size = UDim2.new(1, 60, 1, 60)
+    Shadow.Position = UDim2.new(0.5, 0, 0.5, 8)
+    Shadow.Size = UDim2.new(1, 50, 1, 50)
     Shadow.BackgroundTransparency = 1
     Shadow.Image = "rbxassetid://6014261993"
     Shadow.ImageColor3 = Library.Theme.Shadow
-    Shadow.ImageTransparency = 0.3
+    Shadow.ImageTransparency = 0.5
     Shadow.ScaleType = Enum.ScaleType.Slice
     Shadow.SliceCenter = Rect.new(49, 49, 450, 450)
     Shadow.ZIndex = 0
@@ -172,7 +196,6 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     MainFrame.ZIndex = 2
     
     corner(MainFrame, 22)
-    stroke(MainFrame, Library.Theme.Border, 1.2, 0.25)
 
     -- TopBar
     local TopBar = Instance.new("Frame")
@@ -212,7 +235,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         b.Parent = TopBar
         corner(b, 10)
         stroke(b, Library.Theme.BorderSubtle, 1, 0.3)
-        b.MouseEnter:Connect(function() tween(b, {BackgroundColor3 = color, TextColor3 = Library.Theme.Background}) end)
+        b.MouseEnter:Connect(function() tween(b, {BackgroundColor3 = color, TextColor3 = Library.Theme.Surface}) end)
         b.MouseLeave:Connect(function() tween(b, {BackgroundColor3 = Library.Theme.Surface2, TextColor3 = Library.Theme.Text}) end)
         return b
     end
@@ -227,7 +250,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     Sidebar.BackgroundColor3 = Library.Theme.Surface
     Sidebar.Parent = MainFrame
     corner(Sidebar, 18)
-    stroke(Sidebar, Library.Theme.BorderSubtle, 1, 0.3)
+    stroke(Sidebar, Library.Theme.BorderSubtle, 1, 0.4)
 
     local TabList = Instance.new("ScrollingFrame")
     TabList.Size = UDim2.new(1, -12, 1, -12)
@@ -347,7 +370,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             container.ClipsDescendants = true
             container.Parent = page
             corner(container, 14)
-            stroke(container, Library.Theme.BorderSubtle, 1, 0.3)
+            stroke(container, Library.Theme.BorderSubtle, 1, 0.4)
 
             local header = Instance.new("TextButton")
             header.Size = UDim2.new(1, 0, 0, 46)
@@ -402,7 +425,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                 btn.AutoButtonColor = false
                 btn.Parent = content
                 corner(btn, 12)
-                stroke(btn, Library.Theme.BorderSubtle, 1, 0.3)
+                stroke(btn, Library.Theme.BorderSubtle, 1, 0.4)
 
                 local txt = label(btn, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
                 txt.Size = UDim2.new(1, -28, 1, 0)
@@ -425,7 +448,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                 btn.AutoButtonColor = false
                 btn.Parent = content
                 corner(btn, 12)
-                stroke(btn, Library.Theme.BorderSubtle, 1, 0.3)
+                stroke(btn, Library.Theme.BorderSubtle, 1, 0.4)
 
                 local txt = label(btn, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
                 txt.Size = UDim2.new(1, -64, 1, 0)
@@ -443,7 +466,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                 local switchDot = Instance.new("Frame")
                 switchDot.Size = UDim2.new(0, 16, 0, 16)
                 switchDot.Position = toggled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-                switchDot.BackgroundColor3 = toggled and Library.Theme.Background or Library.Theme.Text
+                switchDot.BackgroundColor3 = Library.Theme.Surface
                 switchDot.Parent = switchBg
                 corner(switchDot, 8)
 
@@ -451,22 +474,20 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                     toggled = not toggled
                     tween(switchBg, {BackgroundColor3 = toggled and Library.Theme.Accent or Library.Theme.SurfaceHover}, 0.2)
                     tween(switchDot, {
-                        Position = toggled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8),
-                        BackgroundColor3 = toggled and Library.Theme.Background or Library.Theme.Text
+                        Position = toggled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
                     }, 0.2)
                     if callback then pcall(function() callback(toggled) end) end
                 end)
                 return btn
             end
 
-            -- เพิ่มฟังก์ชันช่องป้อนข้อมูล (Textbox) โค้งมนพรีเมียม
             function SectionObj:AddTextbox(text, placeholder, callback)
                 local frame = Instance.new("Frame")
                 frame.Size = UDim2.new(1, -16, 0, 40)
                 frame.BackgroundColor3 = Library.Theme.Surface2
                 frame.Parent = content
                 corner(frame, 12)
-                stroke(frame, Library.Theme.BorderSubtle, 1, 0.3)
+                stroke(frame, Library.Theme.BorderSubtle, 1, 0.4)
 
                 local txt = label(frame, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
                 txt.Size = UDim2.new(0.5, -14, 1, 0)
@@ -477,10 +498,10 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                 local boxBg = Instance.new("Frame")
                 boxBg.Size = UDim2.new(0, 130, 0, 26)
                 boxBg.Position = UDim2.new(1, -138, 0.5, -13)
-                boxBg.BackgroundColor3 = Library.Theme.Background
+                boxBg.BackgroundColor3 = Library.Theme.Surface
                 boxBg.Parent = frame
                 corner(boxBg, 8)
-                stroke(boxBg, Library.Theme.BorderSubtle, 1, 0.4)
+                stroke(boxBg, Library.Theme.BorderSubtle, 1, 0.5)
 
                 local box = Instance.new("TextBox")
                 box.Size = UDim2.new(1, -12, 1, 0)
@@ -513,7 +534,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     -- Toggle Menu via RightShift
     UserInputService.InputBegan:Connect(function(input, processed)
         if not processed and input.KeyCode == Enum.KeyCode.RightShift and ScreenGui.Parent then
-            MainFrame.Visible = not MainFrame.Visible
+            GlowContainer.Visible = not GlowContainer.Visible
         end
     end)
 
@@ -522,14 +543,14 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         minimized = not minimized
         Sidebar.Visible = not minimized
         ContainerHolder.Visible = not minimized
-        local targetSize = minimized and UDim2.new(0, 640, 0, 58) or UDim2.new(0, 640, 0, 430)
-        tween(MainFrame, {Size = targetSize}, 0.25)
+        local targetSize = minimized and UDim2.new(0, 644, 0, 58) or UDim2.new(0, 644, 0, 434)
+        tween(GlowContainer, {Size = targetSize}, 0.25)
         MinimizeBtn.Text = minimized and "+" or "−"
     end)
 
     CloseBtn.MouseButton1Click:Connect(function()
         Library:SendNotification("System", "UI Closed successfully.", 2)
-        tween(MainFrame, {Size = UDim2.new(0, 640, 0, 0)}, 0.2)
+        tween(GlowContainer, {Size = UDim2.new(0, 644, 0, 0)}, 0.2)
         task.wait(0.2)
         ScreenGui:Destroy()
     end)
@@ -538,7 +559,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     local dragging, dragInput, dragStart, startPos
     TopBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging, dragStart, startPos = true, input.Position, MainFrame.Position
+            dragging, dragStart, startPos = true, input.Position, GlowContainer.Position
         end
     end)
     TopBar.InputChanged:Connect(function(input)
@@ -549,7 +570,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            GlowContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
     UserInputService.InputEnded:Connect(function(input)
