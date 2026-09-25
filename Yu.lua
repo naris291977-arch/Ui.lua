@@ -1,4 +1,4 @@
--- [[ NAEI HUB UI LIBRARY - ULTRA-PREMIUM WIND UI ]] --
+-- [[ NAEI HUB UI LIBRARY - ULTRA-PREMIUM WIND UI WITH TEXTBOX ]] --
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -7,7 +7,6 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Library = {}
 
--- โทนสี Wind UI พรีเมียม (Dark Deep Charcoal & Crisp White/Soft Accents)
 Library.Theme = {
     Background = Color3.fromRGB(12, 12, 16),
     Surface = Color3.fromRGB(18, 18, 24),
@@ -41,7 +40,7 @@ end
 
 local function corner(object, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 16) -- โค้งมนละมุนแบบพรีเมียม
+    c.CornerRadius = UDim.new(0, radius or 16)
     c.Parent = object
     return c
 end
@@ -157,7 +156,6 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     MainFrame.ClipsDescendants = false
     MainFrame.Parent = ScreenGui
 
-    -- Soft Glow Shadow
     local Shadow = Instance.new("ImageLabel")
     Shadow.Name = "Shadow"
     Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -459,6 +457,51 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                     if callback then pcall(function() callback(toggled) end) end
                 end)
                 return btn
+            end
+
+            -- เพิ่มฟังก์ชันช่องป้อนข้อมูล (Textbox) โค้งมนพรีเมียม
+            function SectionObj:AddTextbox(text, placeholder, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -16, 0, 40)
+                frame.BackgroundColor3 = Library.Theme.Surface2
+                frame.Parent = content
+                corner(frame, 12)
+                stroke(frame, Library.Theme.BorderSubtle, 1, 0.3)
+
+                local txt = label(frame, text, 12, Library.Theme.Text, Enum.Font.GothamMedium)
+                txt.Size = UDim2.new(0.5, -14, 1, 0)
+                txt.Position = UDim2.new(0, 14, 0, 0)
+                txt.TextXAlignment = Enum.TextXAlignment.Left
+                txt.TextYAlignment = Enum.TextYAlignment.Center
+
+                local boxBg = Instance.new("Frame")
+                boxBg.Size = UDim2.new(0, 130, 0, 26)
+                boxBg.Position = UDim2.new(1, -138, 0.5, -13)
+                boxBg.BackgroundColor3 = Library.Theme.Background
+                boxBg.Parent = frame
+                corner(boxBg, 8)
+                stroke(boxBg, Library.Theme.BorderSubtle, 1, 0.4)
+
+                local box = Instance.new("TextBox")
+                box.Size = UDim2.new(1, -12, 1, 0)
+                box.Position = UDim2.new(0, 6, 0, 0)
+                box.BackgroundTransparency = 1
+                box.PlaceholderText = placeholder or "Enter text..."
+                box.Text = ""
+                box.TextColor3 = Library.Theme.Text
+                box.PlaceholderColor3 = Library.Theme.Muted
+                box.TextSize = 11
+                box.Font = Enum.Font.Gotham
+                box.TextXAlignment = Enum.TextXAlignment.Left
+                box.Parent = boxBg
+
+                box.FocusLost:Connect(function(enterPressed)
+                    if callback then
+                        pcall(function() callback(box.Text, enterPressed) end)
+                    end
+                end)
+
+                return frame
             end
 
             return SectionObj
