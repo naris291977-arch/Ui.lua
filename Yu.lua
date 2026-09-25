@@ -1,4 +1,4 @@
--- [[ NAEI HUB UI LIBRARY - BRIGHT PREMIUM WIND UI WITH GLOW BORDER ]] --
+-- [[ NAEI HUB UI LIBRARY - BRIGHT PREMIUM WIND UI WITH GLOW BORDER & TEXTBOX ]] --
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -8,7 +8,6 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Library = {}
 
--- ปรับโทนสีให้สว่าง สะอาดตา และดูโมเดิร์นขึ้น
 Library.Theme = {
     Background = Color3.fromRGB(245, 246, 250),
     Surface = Color3.fromRGB(255, 255, 255),
@@ -16,8 +15,8 @@ Library.Theme = {
     SurfaceHover = Color3.fromRGB(225, 230, 240),
     Border = Color3.fromRGB(210, 215, 230),
     BorderSubtle = Color3.fromRGB(220, 225, 235),
-    Accent = Color3.fromRGB(99, 102, 241),      -- สีฟ้าครามพรีเมียม
-    AccentGlow = Color3.fromRGB(129, 140, 248), -- สีสำหรับเส้นวิ่ง
+    Accent = Color3.fromRGB(99, 102, 241),
+    AccentGlow = Color3.fromRGB(129, 140, 248),
     Text = Color3.fromRGB(30, 35, 45),
     Muted = Color3.fromRGB(110, 120, 140),
     Success = Color3.fromRGB(34, 197, 94),
@@ -57,7 +56,7 @@ local function stroke(object, color, thickness, transparency)
 end
 
 local function label(parent, text, size, color, font)
-    l = Instance.new("TextLabel")
+    local l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
     l.Text = text
     l.TextColor3 = color or Library.Theme.Text
@@ -149,7 +148,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         end)
     end
 
-    -- Main Frame Wrapper (สำหรับใส่เส้นวิ่งเรืองแสงรอบขอบ)
+    -- Glow Container & Border Animation
     local GlowContainer = Instance.new("Frame")
     GlowContainer.Name = "GlowContainer"
     GlowContainer.Size = UDim2.new(0, 644, 0, 434)
@@ -157,16 +156,14 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     GlowContainer.BackgroundTransparency = 1
     GlowContainer.Parent = ScreenGui
 
-    -- สร้างกรอบเส้นวิ่งเรืองแสงรอบขอบ (Glow Border Effect)
     local GlowStroke = stroke(GlowContainer, Library.Theme.AccentGlow, 2, 0)
     corner(GlowContainer, 24)
 
-    -- เอฟเฟกต์ไล่ระดับความโปร่งใสของเส้นขอบให้ดูวิ่งวน
     task.spawn(function()
         local t = 0
         while GlowContainer.Parent do
             t = t + RunService.RenderStepped:Wait() * 2.5
-            local alpha = (math.sin(t) + 1) / 2 -- สลับความโปร่งใส 0 ถึง 1 นุ่มนวล
+            local alpha = (math.sin(t) + 1) / 2
             GlowStroke.Transparency = 0.1 + (alpha * 0.7)
         end
     end)
@@ -481,6 +478,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
                 return btn
             end
 
+            -- ฟังก์ชันช่องป้อนข้อมูล (Textbox) ที่ใส่เพิ่มเข้ามาให้เรียบร้อย
             function SectionObj:AddTextbox(text, placeholder, callback)
                 local frame = Instance.new("Frame")
                 frame.Size = UDim2.new(1, -16, 0, 40)
