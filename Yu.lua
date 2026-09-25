@@ -9,16 +9,16 @@ local Library = {}
 
 -- ธีมเริ่มต้น (Cyberpunk Theme) สามารถเปลี่ยนภายหลังได้
 Library.Theme = {
-    Background = Color3.fromRGB(8, 11, 18),
-    Surface = Color3.fromRGB(14, 18, 28),
-    Surface2 = Color3.fromRGB(20, 26, 40),
-    SurfaceHover = Color3.fromRGB(27, 35, 54),
-    Border = Color3.fromRGB(0, 238, 255),
-    BorderSubtle = Color3.fromRGB(40, 52, 77),
-    Accent = Color3.fromRGB(0, 242, 255),
-    AccentDark = Color3.fromRGB(0, 116, 145),
-    Text = Color3.fromRGB(245, 249, 255),
-    Muted = Color3.fromRGB(130, 146, 175),
+    Background = Color3.fromRGB(10, 13, 21),
+    Surface = Color3.fromRGB(17, 22, 34),
+    Surface2 = Color3.fromRGB(24, 31, 47),
+    SurfaceHover = Color3.fromRGB(33, 43, 63),
+    Border = Color3.fromRGB(92, 179, 255),
+    BorderSubtle = Color3.fromRGB(48, 61, 84),
+    Accent = Color3.fromRGB(90, 194, 255),
+    AccentDark = Color3.fromRGB(30, 91, 142),
+    Text = Color3.fromRGB(241, 246, 255),
+    Muted = Color3.fromRGB(148, 162, 187),
     Success = Color3.fromRGB(52, 235, 143),
     Danger = Color3.fromRGB(255, 75, 105),
     Warning = Color3.fromRGB(255, 190, 70),
@@ -60,6 +60,14 @@ local function stroke(object, color, thickness, transparency)
     return s
 end
 
+local function gradient(object, topColor, bottomColor, rotation)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new(topColor, bottomColor)
+    g.Rotation = rotation or 90
+    g.Parent = object
+    return g
+end
+
 local function label(parent, text, size, color, font)
     local l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
@@ -93,7 +101,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     local function updateScale()
         local camera = workspace.CurrentCamera
         if not camera then return end
-        GuiScale.Scale = math.clamp(camera.ViewportSize.X / 900, 0.72, 1.12)
+        local viewport = camera.ViewportSize
+        GuiScale.Scale = math.clamp(math.min(viewport.X / 600, viewport.Y / 420), 0.5, 1.08)
     end
     updateScale()
     if workspace.CurrentCamera then
@@ -159,8 +168,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     -- Main Container
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 500, 0, 340)
-    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -170)
+    MainFrame.Size = UDim2.new(0, 600, 0, 420)
+    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -210)
     MainFrame.BackgroundColor3 = Library.Theme.Background
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = false
@@ -180,8 +189,9 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     Shadow.ZIndex = 0
     Shadow.Parent = MainFrame
     MainFrame.ZIndex = 2
-    corner(MainFrame, 14)
-    stroke(MainFrame, Library.Theme.Border, 1.2, 0.4)
+    corner(MainFrame, 16)
+    stroke(MainFrame, Library.Theme.Border, 1.2, 0.38)
+    gradient(MainFrame, Library.Theme.Background, Library.Theme.Surface, 35)
 
     local Glow = Instance.new("Frame")
     Glow.Size = UDim2.new(1, 0, 0, 2)
@@ -193,16 +203,17 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
     -- TopBar
     local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, 0, 0, 50)
+    TopBar.Size = UDim2.new(1, 0, 0, 56)
     TopBar.BackgroundColor3 = Library.Theme.Surface
     TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
     TopBar.ZIndex = 4
-    corner(TopBar, 14)
+    corner(TopBar, 16)
+    gradient(TopBar, Library.Theme.Surface2, Library.Theme.Surface, 0)
 
     local TopBarFix = Instance.new("Frame")
-    TopBarFix.Size = UDim2.new(1, 0, 0, 10)
-    TopBarFix.Position = UDim2.new(0, 0, 1, -10)
+    TopBarFix.Size = UDim2.new(1, 0, 0, 12)
+    TopBarFix.Position = UDim2.new(0, 0, 1, -12)
     TopBarFix.BackgroundColor3 = Library.Theme.Surface
     TopBarFix.BorderSizePixel = 0
     TopBarFix.Parent = TopBar
@@ -231,8 +242,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     Subtitle.TextXAlignment = Enum.TextXAlignment.Left
 
     local Status = Instance.new("Frame")
-    Status.Size = UDim2.new(0, 74, 0, 20)
-    Status.Position = UDim2.new(1, -114, 0.5, -10)
+    Status.Size = UDim2.new(0, 82, 0, 22)
+    Status.Position = UDim2.new(1, -164, 0.5, -11)
     Status.BackgroundColor3 = Color3.fromRGB(12, 45, 36)
     Status.Parent = TopBar
     corner(Status, 10)
@@ -268,13 +279,13 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         return b
     end
 
-    local MinimizeBtn = controlButton("−", Library.Theme.Accent, -60)
-    local CloseBtn = controlButton("×", Library.Theme.Danger, -32)
+    local MinimizeBtn = controlButton("−", Library.Theme.Accent, -68)
+    local CloseBtn = controlButton("×", Library.Theme.Danger, -38)
 
     -- Sidebar Navigation
     local Sidebar = Instance.new("Frame")
-    Sidebar.Size = UDim2.new(0, 125, 1, -64)
-    Sidebar.Position = UDim2.new(0, 8, 0, 56)
+    Sidebar.Size = UDim2.new(0, 142, 1, -74)
+    Sidebar.Position = UDim2.new(0, 10, 0, 64)
     Sidebar.BackgroundColor3 = Library.Theme.Surface
     Sidebar.BorderSizePixel = 0
     Sidebar.Parent = MainFrame
@@ -298,8 +309,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     TabLayout.Parent = TabList
 
     local ContainerHolder = Instance.new("Frame")
-    ContainerHolder.Size = UDim2.new(1, -145, 1, -64)
-    ContainerHolder.Position = UDim2.new(0, 138, 0, 56)
+    ContainerHolder.Size = UDim2.new(1, -174, 1, -74)
+    ContainerHolder.Position = UDim2.new(0, 164, 0, 64)
     ContainerHolder.BackgroundTransparency = 1
     ContainerHolder.Parent = MainFrame
 
@@ -312,7 +323,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
     function WindowObj:CreateTab(name, iconChar)
         iconChar = iconChar or "◆"
         local tab = Instance.new("TextButton")
-        tab.Size = UDim2.new(1, 0, 0, 34)
+        tab.Size = UDim2.new(1, 0, 0, 38)
         tab.BackgroundColor3 = Library.Theme.Surface
         tab.BorderSizePixel = 0
         tab.Text = ""
@@ -344,9 +355,14 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         page.Parent = ContainerHolder
 
         local layout = Instance.new("UIListLayout")
-        layout.Padding = UDim.new(0, 8)
+        layout.Padding = UDim.new(0, 10)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Parent = page
+
+        local pagePadding = Instance.new("UIPadding")
+        pagePadding.PaddingRight = UDim.new(0, 8)
+        pagePadding.PaddingBottom = UDim.new(0, 8)
+        pagePadding.Parent = page
 
         tab.MouseEnter:Connect(function()
             if tab:GetAttribute("Active") ~= true then
@@ -394,7 +410,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         -- 1. Collapsible Section
         function TabObj:AddCollapsible(titleText)
             local container = Instance.new("Frame")
-            container.Size = UDim2.new(1, -6, 0, 38)
+            container.Size = UDim2.new(1, -8, 0, 42)
             container.BackgroundColor3 = Library.Theme.Surface
             container.BorderSizePixel = 0
             container.ClipsDescendants = true
@@ -403,7 +419,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             stroke(container, Library.Theme.BorderSubtle, 1, 0.4)
 
             local header = Instance.new("TextButton")
-            header.Size = UDim2.new(1, 0, 0, 38)
+            header.Size = UDim2.new(1, 0, 0, 42)
             header.BackgroundTransparency = 1
             header.Text = ""
             header.AutoButtonColor = false
@@ -423,7 +439,7 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
             local content = Instance.new("Frame")
             content.Size = UDim2.new(1, 0, 0, 0)
-            content.Position = UDim2.new(0, 0, 0, 38)
+            content.Position = UDim2.new(0, 0, 0, 42)
             content.BackgroundTransparency = 1
             content.Parent = container
 
@@ -433,10 +449,15 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             layout.Parent = content
 
             local isOpen = false
+            layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                if isOpen then
+                    tween(container, {Size = UDim2.new(1, -8, 0, 42 + layout.AbsoluteContentSize.Y + 12)}, 0.18)
+                end
+            end)
             header.MouseButton1Click:Connect(function()
                 isOpen = not isOpen
-                local targetHeight = isOpen and (38 + layout.AbsoluteContentSize.Y + 10) or 38
-                tween(container, {Size = UDim2.new(1, -6, 0, targetHeight)}, 0.25)
+                local targetHeight = isOpen and (42 + layout.AbsoluteContentSize.Y + 12) or 42
+                tween(container, {Size = UDim2.new(1, -8, 0, targetHeight)}, 0.25)
                 tween(arrow, {Rotation = isOpen and 180 or 0}, 0.25)
             end)
 
@@ -506,7 +527,9 @@ function Library:CreateWindow(hubTitleText, subTitleText)
             end
 
             function SectionObj:AddSlider(text, min, max, default, callback)
-                local value = default or min
+                if max < min then min, max = max, min end
+                if max == min then max = min + 1 end
+                local value = math.clamp(default or min, min, max)
                 local card = Instance.new("Frame")
                 card.Size = UDim2.new(1, -6, 0, 48)
                 card.BackgroundColor3 = Library.Theme.Surface2
@@ -540,7 +563,8 @@ function Library:CreateWindow(hubTitleText, subTitleText)
 
                 local dragging = false
                 local function update(input)
-                    local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+                    local width = math.max(sliderBar.AbsoluteSize.X, 1)
+                    local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / width, 0, 1)
                     value = math.floor(min + ((max - min) * pos) + 0.5)
                     valLabel.Text = tostring(value)
                     fillBar.Size = UDim2.new(pos, 0, 1, 0)
@@ -585,14 +609,14 @@ function Library:CreateWindow(hubTitleText, subTitleText)
         Sidebar.Visible = not minimized
         ContainerHolder.Visible = not minimized
         Status.Visible = not minimized
-        local targetSize = minimized and UDim2.new(0, 500, 0, 50) or UDim2.new(0, 500, 0, 340)
+        local targetSize = minimized and UDim2.new(0, 600, 0, 56) or UDim2.new(0, 600, 0, 420)
         tween(MainFrame, {Size = targetSize}, 0.3)
         MinimizeBtn.Text = minimized and "+" or "−"
     end)
 
     CloseBtn.MouseButton1Click:Connect(function()
         Library:SendNotification("NAEI HUB", "UI Closed.", 2)
-        tween(MainFrame, {Size = UDim2.new(0, 400, 0, 0)}, 0.2)
+        tween(MainFrame, {Size = UDim2.new(0, 600, 0, 0)}, 0.2)
         task.wait(0.2)
         ScreenGui:Destroy()
     end)
