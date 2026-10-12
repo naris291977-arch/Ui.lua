@@ -1,5 +1,5 @@
 --[[
-    NAEI HUB v15.0 - NEON OBSIDIAN (Upgraded)
+    NAEI HUB v15.4 - NEON OBSIDIAN (Upgraded)
 
     ตัวอย่างการใช้งาน:
     local NAEI = loadstring(...)()
@@ -7,11 +7,13 @@
         local Win = NAEI:CreateWindow({Title="NAEI HUB", ToggleKey=Enum.KeyCode.RightShift})
         local Tab = Win:CreateTab("Main","★")
         Tab:AddSection("Combat")
-        Tab:AddToggle({Name="Auto", Flag="auto", Callback=function(v) print(v) end})
+        Tab:AddToggle({Name="Auto", Icon="⚡", Float=true, Flag="auto", Callback=function(v) print(v) end}) -- Float=true = มีปุ่มลอย
+        Win:CreateFloatButton({Name="Hide", Icon="👁", Callback=function() Win:SetHidden(true) end}) -- ปุ่มลอยอิสระ
         Tab:AddSlider({Name="Speed", Min=0, Max=100, Increment=5, Default=16, Flag="speed"})
         Tab:AddDropdown({Name="Mode", Options={"A","B","C"}, Default="A", Flag="mode"})
         Tab:AddKeybind({Name="Key", Default=Enum.KeyCode.F, Flag="key"})
         Tab:AddTextBox({Name="Name", Placeholder="type...", Flag="name"})
+        Win:CreateSettingsTab() -- แท็บตั้งค่า: เปลี่ยนสีธีม/สเกล/ปุ่มลัด/Config
         Tab:AddButton({Name="Save Config", Callback=function() Win:SaveConfig("default") end})
     end})
 ]]
@@ -25,13 +27,13 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 local NAEI = {}
-NAEI.Version = "15.1"
+NAEI.Version = "15.4"
 NAEI.Flags = {}
 NAEI.Setters = {}
 NAEI.Connections = {}
 NAEI.ConfigFolder = "NAEI_HUB"
 NAEI.LogoUrl = "https://i.postimg.cc/kGgy2Qv7/1791534181749.jpg"
-NAEI.LogoFile = "naei_v15_1.jpg"
+NAEI.LogoFile = "naei_v15_4.jpg"
 
 local T = {
     Bg = Color3.fromRGB(8, 8, 10),
@@ -144,10 +146,14 @@ end
 
 local function Hover(btn, frame, stroke)
     Connect(btn.MouseEnter, function()
+        local ab = frame:FindFirstChild("AccentBar")
+        if ab then Tween(ab, 0.3, {Size = UDim2.new(0, 3, 0.55, 0), BackgroundTransparency = 0}, Enum.EasingStyle.Back) end
         Tween(frame, 0.2, {BackgroundColor3 = T.Hover})
         if stroke then Tween(stroke, 0.2, {Color = T.Primary}) end
     end)
     Connect(btn.MouseLeave, function()
+        local ab = frame:FindFirstChild("AccentBar")
+        if ab then Tween(ab, 0.2, {Size = UDim2.new(0, 3, 0, 0), BackgroundTransparency = 1}) end
         Tween(frame, 0.2, {BackgroundColor3 = T.Card})
         if stroke then Tween(stroke, 0.2, {Color = T.Border}) end
     end)
@@ -157,6 +163,9 @@ local function CardFrame(parent, h)
     local f = New("Frame", {Size = UDim2.new(1, 0, 0, h), BackgroundColor3 = T.Card, Parent = parent})
     Corner(f, 14)
     New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(185, 185, 200)), Rotation = 90, Parent = f})
+    local bar = New("Frame", {Name = "AccentBar", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.new(0, 3, 0, 0),
+        BackgroundColor3 = T.Primary, BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 3, Parent = f})
+    Corner(bar, 3)
     return f, Stroke(f, T.Border, 0.4, 1)
 end
 
@@ -308,7 +317,7 @@ function NAEI:CreateWindow(cfg)
     local Main = New("Frame", {Size = UDim2.fromOffset(0, 0), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
         BackgroundColor3 = T.Bg, BackgroundTransparency = 0.02, ClipsDescendants = true, Parent = Gui})
     Corner(Main, 22)
-    New("UIScale", {Scale = scale, Parent = Main})
+    local UIS = New("UIScale", {Scale = scale, Parent = Main})
     New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 190)), Rotation = 90, Parent = Main})
     local ms = Stroke(Main, T.Primary, 0.08, 2)
     local mg = New("UIGradient", {Color = ColorSequence.new(T.Primary, T.Primary2), Rotation = 45, Parent = ms})
@@ -316,6 +325,21 @@ function NAEI:CreateWindow(cfg)
 
     local Header = New("Frame", {Size = UDim2.new(1, 0, 0, 58), BackgroundTransparency = 1, ZIndex = 10, Parent = Main})
     EnableDrag(Main, Header)
+    local line = New("Frame", {Size = UDim2.new(1, -28, 0, 2), Position = UDim2.new(0, 14, 0, 55), BackgroundColor3 = Color3.new(1, 1, 1),
+        BorderSizePixel = 0, Parent = Header})
+    Corner(line, 2)
+    local lg = New("UIGradient", {Color = ColorSequence.new{ColorSequenceKeypoint.new(0, T.Primary), ColorSequenceKeypoint.new(0.5, T.Primary2),
+        ColorSequenceKeypoint.new(1, T.Primary3)}, Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.15),
+        NumberSequenceKeypoint.new(1, 1)}, Parent = line})
+    local fpsLbl = Label(Header, {Size = UDim2.fromOffset(70, 12), Position = UDim2.new(1, -170, 0, 23), Text = "", TextColor3 = T.Muted,
+        TextSize = 9, Font = Enum.Font.Code, TextXAlignment = Right})
+    local acc, frames = 0, 0
+    Connect(RunService.Heartbeat, function(dt)
+        if not Main.Visible then return end
+        lg.Offset = Vector2.new(math.sin(tick() * 1.2) * 0.45, 0)
+        acc, frames = acc + dt, frames + 1
+        if acc >= 0.5 then fpsLbl.Text = math.floor(frames / acc + 0.5) .. " FPS"; acc, frames = 0, 0 end
+    end)
     MakeLogo(Header, {Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(18, 11)}, 12)
     Label(Header, {Size = UDim2.new(1, -200, 0, 18), Position = UDim2.fromOffset(62, 12), Text = cfg.Title or "NAEI HUB",
         TextColor3 = T.Text, TextSize = 16, Font = Enum.Font.GothamBold})
@@ -392,11 +416,9 @@ function NAEI:CreateWindow(cfg)
         if orbDown and (Orb.AbsolutePosition - orbDown).Magnitude < 6 then SetHidden(false) end
     end)
     Connect(MinBtn.MouseButton1Click, function() SetHidden(true) end)
-    if cfg.ToggleKey then
-        Connect(UserInputService.InputBegan, function(i, gp)
-            if not gp and i.KeyCode == cfg.ToggleKey then SetHidden(not hidden) end
-        end)
-    end
+    Connect(UserInputService.InputBegan, function(i, gp)
+        if not gp and cfg.ToggleKey and i.KeyCode == cfg.ToggleKey then SetHidden(not hidden) end
+    end)
 
     function Window:Destroy()
         if not alive then return end
@@ -408,6 +430,63 @@ function NAEI:CreateWindow(cfg)
         Gui:Destroy()
     end
     Connect(CloseBtn.MouseButton1Click, function() task.spawn(Window.Destroy, Window) end)
+
+    -- ===== FLOATING BUTTONS (ปุ่มลอย) =====
+    local floatCount = 0
+    function Window:CreateFloatButton(c)
+        c = c or {}
+        floatCount = floatCount + 1
+        local size = c.Size or 54
+        local state = c.Default == true
+        local isToggle = c.Toggle == true
+        local B = New("TextButton", {Size = UDim2.fromOffset(0, 0), AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = c.Position or UDim2.new(1, -46, 0, 100 + (floatCount - 1) * (size + 10)),
+            BackgroundColor3 = T.Card2, Text = "", AutoButtonColor = false, ZIndex = 40, Parent = Gui})
+        Corner(B, c.Round == false and 16 or 100)
+        local glow = New("ImageLabel", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(2.3, 2.3),
+            BackgroundTransparency = 1, Image = "rbxassetid://5028857084", ImageColor3 = T.Primary, ImageTransparency = 1, Parent = B})
+        local S = Stroke(B, T.Border, 0.3, 2)
+        local icon = New("TextLabel", {Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 8), BackgroundTransparency = 1,
+            Text = c.Icon or "●", TextColor3 = T.Sub, TextSize = 18, Font = Enum.Font.GothamBold, ZIndex = 41, Parent = B})
+        local nm = New("TextLabel", {Size = UDim2.new(1, -8, 0, 12), Position = UDim2.new(0, 4, 1, -20), BackgroundTransparency = 1,
+            Text = c.Name or "", TextColor3 = T.Sub, TextSize = 9, Font = Enum.Font.GothamBold, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 41, Parent = B})
+        local function render()
+            Tween(S, 0.25, {Color = state and T.Primary or T.Border, Transparency = state and 0 or 0.3})
+            Tween(glow, 0.25, {ImageTransparency = state and 0.72 or 1})
+            Tween(icon, 0.25, {TextColor3 = state and T.Primary or T.Sub})
+            Tween(nm, 0.25, {TextColor3 = state and T.Text or T.Sub})
+            Tween(B, 0.25, {BackgroundColor3 = state and Color3.fromRGB(40, 38, 14) or T.Card2})
+        end
+        EnableDrag(B, B)
+        local downPos
+        Connect(B.MouseButton1Down, function() downPos = B.AbsolutePosition end)
+        Connect(B.MouseButton1Up, function()
+            if not (downPos and (B.AbsolutePosition - downPos).Magnitude < 6) then return end
+            Tween(B, 0.07, {Size = UDim2.fromOffset(size - 6, size - 6)})
+            task.delay(0.07, function() Tween(B, 0.25, {Size = UDim2.fromOffset(size, size)}, Enum.EasingStyle.Back) end)
+            if isToggle then
+                state = not state; render(); SetFlag(c.Flag, state)
+                if c.Callback then task.spawn(pcall, c.Callback, state) end
+            elseif c.Callback then
+                task.spawn(pcall, c.Callback)
+            end
+        end)
+        Connect(B.MouseEnter, function() if not state then Tween(S, 0.2, {Color = T.Primary2, Transparency = 0.1}) end end)
+        Connect(B.MouseLeave, function() if not state then Tween(S, 0.2, {Color = T.Border, Transparency = 0.3}) end end)
+        render()
+        Tween(B, 0.5, {Size = UDim2.fromOffset(size, size)}, Enum.EasingStyle.Back)
+        if isToggle then SetFlag(c.Flag, state) end
+
+        local obj = {Frame = B}
+        function obj:Set(v, silent)
+            state = v == true; render(); SetFlag(c.Flag, state)
+            if not silent and c.Callback and isToggle then task.spawn(pcall, c.Callback, state) end
+        end
+        function obj:Get() return state end
+        function obj:SetVisible(v) B.Visible = v end
+        function obj:Destroy() B:Destroy() end
+        return obj
+    end
 
     -- ===== Config save/load =====
     function Window:SaveConfig(name)
@@ -469,7 +548,9 @@ function NAEI:CreateWindow(cfg)
             Tween(Btn, 0.3, {BackgroundTransparency = 0})
             BStroke.Transparency = 0.2; BStroke.Color = T.Primary
             Lbl.TextColor3, Icon.TextColor3 = T.Primary, T.Primary
+            Page.Position = UDim2.fromOffset(0, 14)
             Page.Visible = true
+            Tween(Page, 0.35, {Position = UDim2.fromOffset(0, 0)}, Enum.EasingStyle.Quint)
         end
         Connect(Btn.MouseButton1Click, function() Tab:Select() end)
 
@@ -522,13 +603,14 @@ function NAEI:CreateWindow(cfg)
                 task.delay(0.06, function() Tween(f, 0.25, {Size = UDim2.new(1, 0, 0, 52)}, Enum.EasingStyle.Back) end)
                 if c.Callback then task.spawn(pcall, c.Callback) end
             end)
+            if c.Float then Window:CreateFloatButton({Name = c.Name, Icon = c.Icon, Callback = c.Callback}) end
             return f
         end
 
         function Tab:AddToggle(c)
             c = c or {}
             local state = c.Default == true
-            local f = CardFrame(Page, c.Desc and 58 or 52)
+            local f, fs = CardFrame(Page, c.Desc and 58 or 52)
             Label(f, {Size = UDim2.new(1, -90, 0, 16), Position = UDim2.fromOffset(16, c.Desc and 11 or 18), Text = c.Name or "Toggle",
                 TextColor3 = T.Text, TextSize = 13, Font = Enum.Font.GothamMedium})
             if c.Desc then
@@ -537,12 +619,14 @@ function NAEI:CreateWindow(cfg)
             local Track = New("Frame", {Size = UDim2.fromOffset(52, 28), Position = UDim2.new(1, -68, 0.5, -14),
                 BackgroundColor3 = state and T.Primary or T.Off, Parent = f})
             Corner(Track, 14)
+            New("UIGradient", {Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 255, 235)), Parent = Track})
             local Thumb = New("Frame", {Size = UDim2.fromOffset(22, 22), Position = state and UDim2.new(1, -25, 0.5, -11) or UDim2.new(0, 3, 0.5, -11),
                 BackgroundColor3 = Color3.new(1, 1, 1), Parent = Track})
             Corner(Thumb, 100)
-            local obj = {}
+            local obj, fb = {}
             local function apply(v, silent)
                 state = v; SetFlag(c.Flag, v)
+                if fb then fb:Set(v, true) end
                 Tween(Track, 0.3, {BackgroundColor3 = v and T.Primary or T.Off})
                 Tween(Thumb, 0.35, {Position = v and UDim2.new(1, -25, 0.5, -11) or UDim2.new(0, 3, 0.5, -11)}, Enum.EasingStyle.Back)
                 if not silent and c.Callback then task.spawn(pcall, c.Callback, v) end
@@ -551,7 +635,12 @@ function NAEI:CreateWindow(cfg)
             function obj:Get() return state end
             local b = New("TextButton", {Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", Parent = f})
             Connect(b.MouseButton1Click, function() apply(not state) end)
+            Hover(b, f, fs)
             SetFlag(c.Flag, state); Register(c.Flag, function(v) apply(v == true) end)
+            if c.Float then
+                fb = Window:CreateFloatButton({Name = c.Name, Icon = c.Icon, Toggle = true, Default = state,
+                    Callback = function(v) apply(v) end})
+            end
             return obj
         end
 
@@ -695,12 +784,62 @@ function NAEI:CreateWindow(cfg)
                     task.spawn(pcall, c.Callback, key)
                 end
             end)
-            SetFlag(c.Flag, key); Register(c.Flag, setKey)
+            SetFlag(c.Flag, key)
+            Register(c.Flag, function(k) setKey(k); if c.ChangedCallback then task.spawn(pcall, c.ChangedCallback, k) end end)
             return {Set = function(_, k) setKey(k) end, Get = function() return key end}
         end
 
         table.insert(Window.Tabs, Tab)
         if #Window.Tabs == 1 then Tab:Select() end
+        return Tab
+    end
+
+    -- ===== ACCENT THEME =====
+    local function near(a, b) return math.abs(a.R - b.R) < 0.012 and math.abs(a.G - b.G) < 0.012 and math.abs(a.B - b.B) < 0.012 end
+    local colorProps = {"BackgroundColor3", "TextColor3", "ImageColor3", "ScrollBarImageColor3", "Color"}
+    function Window:SetAccent(new)
+        local old = T.Primary
+        if near(old, new) then return end
+        local function recolor(o)
+            for _, prop in ipairs(colorProps) do
+                local ok, v = pcall(function() return o[prop] end)
+                if ok and typeof(v) == "Color3" and near(v, old) then pcall(function() o[prop] = new end) end
+            end
+            if o:IsA("UIGradient") then
+                local nk, changed = {}, false
+                for i, k in ipairs(o.Color.Keypoints) do
+                    if typeof(k.Value) == "Color3" and near(k.Value, old) then
+                        nk[i] = ColorSequenceKeypoint.new(k.Time, new); changed = true
+                    else nk[i] = k end
+                end
+                if changed then o.Color = ColorSequence.new(nk) end
+            end
+        end
+        for _, d in ipairs(Gui:GetDescendants()) do recolor(d) end
+        T.Primary = new
+    end
+
+    -- ===== SETTINGS TAB =====
+    local Presets = {Yellow = Color3.fromRGB(255, 235, 0), Cyan = Color3.fromRGB(0, 230, 255), Violet = Color3.fromRGB(150, 110, 255),
+        Pink = Color3.fromRGB(255, 80, 170), Red = Color3.fromRGB(255, 70, 90), Green = Color3.fromRGB(70, 255, 130), Orange = Color3.fromRGB(255, 150, 40)}
+    local presetOrder = {"Yellow", "Cyan", "Violet", "Pink", "Red", "Green", "Orange"}
+    function Window:CreateSettingsTab()
+        local Tab = Window:CreateTab("Settings", "⚙")
+        Tab:AddSection("Appearance")
+        Tab:AddDropdown({Name = "Accent Color", Options = presetOrder, Default = "Yellow", Flag = "ui_accent",
+            Callback = function(n) if Presets[n] then Window:SetAccent(Presets[n]) end end})
+        Tab:AddSlider({Name = "UI Scale", Min = 50, Max = 120, Increment = 5, Default = math.floor(scale * 100 + 0.5), Suffix = "%", Flag = "ui_scale",
+            Callback = function(v) UIS.Scale = v / 100 end})
+        Tab:AddToggle({Name = "Show FPS", Default = true, Flag = "ui_fps", Callback = function(v) fpsLbl.Visible = v end})
+        Tab:AddSection("Controls")
+        Tab:AddKeybind({Name = "Toggle UI Key", Default = cfg.ToggleKey, Flag = "ui_key", ChangedCallback = function(k) cfg.ToggleKey = k end})
+        Tab:AddSection("Config")
+        local cfgName = "default"
+        Tab:AddTextBox({Name = "Config Name", Default = "default", Placeholder = "ชื่อไฟล์", Callback = function(t) if t ~= "" then cfgName = t end end})
+        Tab:AddButton({Name = "Save Config", Callback = function() Window:SaveConfig(cfgName) end})
+        Tab:AddButton({Name = "Load Config", Callback = function() Window:LoadConfig(cfgName) end})
+        Tab:AddSection("Danger Zone")
+        Tab:AddButton({Name = "Unload Hub", Callback = function() Window:Destroy() end})
         return Tab
     end
 
