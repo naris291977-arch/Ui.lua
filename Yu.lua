@@ -25,13 +25,13 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 local NAEI = {}
-NAEI.Version = "15.0"
+NAEI.Version = "15.1"
 NAEI.Flags = {}
 NAEI.Setters = {}
 NAEI.Connections = {}
 NAEI.ConfigFolder = "NAEI_HUB"
 NAEI.LogoUrl = "https://i.postimg.cc/kGgy2Qv7/1791534181749.jpg"
-NAEI.LogoFile = "naei_v15.jpg"
+NAEI.LogoFile = "naei_v15_1.jpg"
 
 local T = {
     Bg = Color3.fromRGB(8, 8, 10),
@@ -98,6 +98,25 @@ local function Label(parent, props)
     props.Parent = parent
     return New("TextLabel", props)
 end
+local LogoAsset
+local function MakeLogo(parent, props, radius)
+    if LogoAsset == nil then LogoAsset = GetAsset(NAEI.LogoUrl, NAEI.LogoFile) end
+    props.BackgroundTransparency = 1
+    props.Image = LogoAsset
+    props.ScaleType = Enum.ScaleType.Crop
+    props.Parent = parent
+    local img = New("ImageLabel", props)
+    Corner(img, radius or 12)
+    if LogoAsset == "" then -- โหลดรูปไม่ได้ -> โลโก้สำรอง "N"
+        img.BackgroundTransparency = 0
+        img.BackgroundColor3 = Color3.new(1, 1, 1)
+        New("UIGradient", {Color = ColorSequence.new(T.Primary, T.Primary2), Rotation = 45, Parent = img})
+        local t = New("TextLabel", {Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "N", TextColor3 = T.Bg,
+            TextScaled = true, Font = Enum.Font.GothamBlack, Parent = img})
+        New("UIPadding", {PaddingTop = UDim.new(0.18, 0), PaddingBottom = UDim.new(0.18, 0), Parent = t})
+    end
+    return img
+end
 local function SetFlag(flag, v) if flag then NAEI.Flags[flag] = v end end
 local function Register(flag, setter) if flag then NAEI.Setters[flag] = setter end end
 
@@ -137,6 +156,7 @@ end
 local function CardFrame(parent, h)
     local f = New("Frame", {Size = UDim2.new(1, 0, 0, h), BackgroundColor3 = T.Card, Parent = parent})
     Corner(f, 14)
+    New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(185, 185, 200)), Rotation = 90, Parent = f})
     return f, Stroke(f, T.Border, 0.4, 1)
 end
 
@@ -192,9 +212,7 @@ function NAEI:ShowLoader(cfg)
     local LogoBox = New("Frame", {Size = UDim2.fromOffset(88, 88), Position = UDim2.new(0.5, -44, 0, 32),
         BackgroundColor3 = T.Card2, Parent = Card})
     Corner(LogoBox, 24); Stroke(LogoBox, T.Primary, 0.1, 2)
-    local Logo = New("ImageLabel", {Size = UDim2.fromOffset(72, 72), Position = UDim2.fromOffset(8, 8), BackgroundTransparency = 1,
-        Image = GetAsset(NAEI.LogoUrl, NAEI.LogoFile), ScaleType = Enum.ScaleType.Crop, Parent = LogoBox})
-    Corner(Logo, 18)
+    MakeLogo(LogoBox, {Size = UDim2.fromOffset(72, 72), Position = UDim2.fromOffset(8, 8)}, 18)
     local tilt = RunService.RenderStepped:Connect(function() LogoBox.Rotation = math.sin(tick() * 2) * 2 end)
 
     Label(Card, {Size = UDim2.new(1, 0, 0, 24), Position = UDim2.fromOffset(0, 134), Text = cfg.Title or "NAEI HUB",
@@ -280,24 +298,25 @@ function NAEI:CreateWindow(cfg)
     cfg = cfg or {}
     local cam = workspace.CurrentCamera
     local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
-    local req = cfg.Size or Vector2.new(720, 480)
-    local WSize = Vector2.new(math.min(req.X, vp.X - 24), math.min(req.Y, vp.Y - 24))
+    local req = cfg.Size or Vector2.new(640, 420)
+    local scale = cfg.Scale or (vp.X < 700 and 0.72 or 0.8)
+    local WSize = Vector2.new(math.min(req.X, (vp.X - 24) / scale), math.min(req.Y, (vp.Y - 24) / scale))
     local Window = {Tabs = {}}
     local alive = true
 
     local Gui = New("ScreenGui", {Name = "NAEI_HUB", ResetOnSpawn = false, IgnoreGuiInset = true, Parent = GetParent()})
     local Main = New("Frame", {Size = UDim2.fromOffset(0, 0), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
         BackgroundColor3 = T.Bg, BackgroundTransparency = 0.02, ClipsDescendants = true, Parent = Gui})
-    Corner(Main, 24)
+    Corner(Main, 22)
+    New("UIScale", {Scale = scale, Parent = Main})
+    New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 175, 190)), Rotation = 90, Parent = Main})
     local ms = Stroke(Main, T.Primary, 0.08, 2)
     local mg = New("UIGradient", {Color = ColorSequence.new(T.Primary, T.Primary2), Rotation = 45, Parent = ms})
     Connect(RunService.Heartbeat, function(dt) if Main.Visible then mg.Rotation = (mg.Rotation + 12 * dt) % 360 end end)
 
     local Header = New("Frame", {Size = UDim2.new(1, 0, 0, 58), BackgroundTransparency = 1, ZIndex = 10, Parent = Main})
     EnableDrag(Main, Header)
-    local Logo = New("ImageLabel", {Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(18, 11), BackgroundTransparency = 1,
-        Image = GetAsset(NAEI.LogoUrl, NAEI.LogoFile), ScaleType = Enum.ScaleType.Crop, Parent = Header})
-    Corner(Logo, 12)
+    MakeLogo(Header, {Size = UDim2.fromOffset(36, 36), Position = UDim2.fromOffset(18, 11)}, 12)
     Label(Header, {Size = UDim2.new(1, -200, 0, 18), Position = UDim2.fromOffset(62, 12), Text = cfg.Title or "NAEI HUB",
         TextColor3 = T.Text, TextSize = 16, Font = Enum.Font.GothamBold})
     Label(Header, {Size = UDim2.new(1, -200, 0, 12), Position = UDim2.fromOffset(62, 33), Text = cfg.Subtitle or ("v" .. NAEI.Version .. " • NEON OBSIDIAN"),
@@ -324,12 +343,21 @@ function NAEI:CreateWindow(cfg)
     local Content = New("Frame", {Size = UDim2.new(1, -24, 1, -122), Position = UDim2.fromOffset(12, 116), BackgroundTransparency = 1,
         ClipsDescendants = true, Parent = Main})
 
-    local Orb = New("ImageButton", {Size = UDim2.fromOffset(0, 0), Position = UDim2.new(0, 24, 0.5, -32), BackgroundColor3 = T.Card2,
-        Visible = false, ZIndex = 50, Parent = Gui})
-    Corner(Orb, 100); Stroke(Orb, T.Primary, 0, 2.5)
-    local OrbLogo = New("ImageLabel", {Size = UDim2.new(1, -16, 1, -16), Position = UDim2.fromOffset(8, 8), BackgroundTransparency = 1,
-        Image = GetAsset(NAEI.LogoUrl, NAEI.LogoFile), ScaleType = Enum.ScaleType.Crop, Parent = Orb})
-    Corner(OrbLogo, 100)
+    local Orb = New("ImageButton", {Size = UDim2.fromOffset(0, 0), Position = UDim2.new(0, 24, 0.5, -28), BackgroundColor3 = T.Bg,
+        Visible = false, ZIndex = 50, AutoButtonColor = false, Parent = Gui})
+    Corner(Orb, 100)
+    local OrbGlow = New("ImageLabel", {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(2.4, 2.4),
+        BackgroundTransparency = 1, Image = "rbxassetid://5028857084", ImageColor3 = T.Primary, ImageTransparency = 0.8, Parent = Orb})
+    local OrbStroke = Stroke(Orb, T.Primary, 0, 2)
+    local OrbGrad = New("UIGradient", {Color = ColorSequence.new{ColorSequenceKeypoint.new(0, T.Primary), ColorSequenceKeypoint.new(0.5, T.Primary2),
+        ColorSequenceKeypoint.new(1, T.Primary3)}, Parent = OrbStroke})
+    MakeLogo(Orb, {AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.78, 0.78), ZIndex = 51}, 100)
+    Connect(RunService.Heartbeat, function(dt)
+        if Orb.Visible then
+            OrbGrad.Rotation = (OrbGrad.Rotation + 90 * dt) % 360
+            OrbGlow.ImageTransparency = 0.78 + 0.08 * math.sin(tick() * 2.5)
+        end
+    end)
     EnableDrag(Orb, Orb)
 
     Main.BackgroundTransparency = 1
@@ -345,7 +373,7 @@ function NAEI:CreateWindow(cfg)
                 Tween(Main, 0.3, {Size = UDim2.fromOffset(0, 0), BackgroundTransparency = 1}, Enum.EasingStyle.Back, Enum.EasingDirection.In)
                 task.wait(0.3); Main.Visible = false
                 Orb.Visible = true; Orb.Size = UDim2.fromOffset(0, 0)
-                Tween(Orb, 0.4, {Size = UDim2.fromOffset(64, 64)}, Enum.EasingStyle.Back)
+                Tween(Orb, 0.4, {Size = UDim2.fromOffset(56, 56)}, Enum.EasingStyle.Back)
             else
                 Tween(Orb, 0.2, {Size = UDim2.fromOffset(0, 0)}, Enum.EasingStyle.Back, Enum.EasingDirection.In)
                 task.wait(0.2); Orb.Visible = false
